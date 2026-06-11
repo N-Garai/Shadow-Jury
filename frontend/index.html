@@ -178,8 +178,10 @@
         </footer>
     </div>
 
-    <!-- Set this to your Render backend URL after deploying -->
-    <script>window.API_BASE = 'https://shadow-jury-backend.onrender.com/api';</script>
+    <!-- For local dev: API_BASE stays same-origin (handled in api.js) -->
+    <!-- After deploying backend to Render, ADD this line before utils.js:
+         <script>window.API_BASE = 'https://YOUR-APP.onrender.com/api';</script>
+    -->
     <script src="js/utils.js"></script>
     <script src="js/api.js"></script>
     <script src="js/upload.js"></script>

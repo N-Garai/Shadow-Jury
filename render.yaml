@@ -1,3 +1,5 @@
+# Reference config for manual Render setup (not a Blueprint).
+# Copy these settings into the Render dashboard when creating a Web Service.
 services:
   - type: web
     name: shadow-jury-backend
@@ -6,19 +8,7 @@ services:
     startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
-        value: 3.12
+        value: "3.12"
       - key: MOCK_MODE
         value: "1"
     healthCheckPath: /api/health
-
-  - type: web
-    name: shadow-jury-frontend
-    runtime: static
-    buildCommand: ""
-    startCommand: ""
-    staticPublishPath: frontend
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars: []
