@@ -50,12 +50,13 @@ async def upload_files(
             files_content.append({"name": file.filename, "content": content})
 
     github_data = None
+    github_error = None
     if github_url and github_url.strip():
         fetcher = GitHubFetcher()
         try:
-            github_data = await fetcher.fetch(github_url.strip())
+            github_data = await fetcher.fetch_repo(github_url.strip())
         except Exception as e:
-            pass
+            github_error = str(e)
 
     paste_text_value = paste_text if paste_text and paste_text.strip() else None
 
@@ -72,6 +73,7 @@ async def upload_files(
         "files_received": len(files_content),
         "paste_received": bool(paste_text_value),
         "github_data_fetched": github_data is not None,
+        "github_error": github_error,
     }
 
 

@@ -144,7 +144,10 @@ class ProjectJuryPipeline:
 
         doctor = ReadmeDoctorAgent()
         brief_dict = self._brief_to_dict(ctx.brief)
-        brief_dict["readme"] = self._extract_readme(ctx.files_content)
+        brief_readme = self._extract_readme(ctx.files_content)
+        if not brief_readme and ctx.github_data and ctx.github_data.get("readme_content"):
+            brief_readme = ctx.github_data["readme_content"][:2000]
+        brief_dict["readme"] = brief_readme
         risks, suggestions = await doctor.diagnose(brief_dict, ctx.weaknesses,
                                                     ctx.competition_insights)
         ctx.risk_reports = risks
