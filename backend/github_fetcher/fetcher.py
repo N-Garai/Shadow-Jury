@@ -1,9 +1,18 @@
+import os
 import httpx
 from typing import Optional
 
 
 class GitHubFetcher:
     GITHUB_API = "https://api.github.com"
+    MAX_FILE_FETCHES = 5  # limit file fetches to stay under rate limit
+
+    def _headers(self) -> dict:
+        headers = {"Accept": "application/vnd.github.raw+json"}
+        token = os.environ.get("GITHUB_TOKEN")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        return headers
 
     async def fetch_repo(self, url: str) -> Optional[dict]:
         parts = url.rstrip("/").split("/")
@@ -12,7 +21,10 @@ class GitHubFetcher:
         owner, repo = parts[-2], parts[-1]
 
         async with httpx.AsyncClient() as client:
-            repo_resp = await client.get(f"{self.GITHUB_API}/repos/{owner}/{repo}")
+            repo_resp = await client.get(
+                f"{self.GITHUB_API}/repos/{owner}/{repo}",
+                headers=self._headers(),
+            )
             if repo_resp.status_code != 200:
                 return None
             repo_data = repo_resp.json()
@@ -20,7 +32,7 @@ class GitHubFetcher:
 
             readme_resp = await client.get(
                 f"{self.GITHUB_API}/repos/{owner}/{repo}/readme",
-                headers={"Accept": "application/vnd.github.raw+json"},
+                headers=self._headers(),
             )
             readme_content = readme_resp.text if readme_resp.status_code == 200 else None
 
@@ -30,17 +42,26 @@ class GitHubFetcher:
             tree_data = tree_resp.json() if tree_resp.status_code == 200 else {"tree": []}
 
             relevant_files = []
+            fetched = 0
             for item in tree_data.get("tree", []):
-                if item["path"].endswith((".md", ".py", ".ts", ".js", ".json", ".yaml", ".toml")):
-                    file_resp = await client.get(
-                        f"{self.GITHUB_API}/repos/{owner}/{repo}/contents/{item['path']}",
-                        headers={"Accept": "application/vnd.github.raw+json"},
-                    )
-                    if file_resp.status_code == 200:
-                        relevant_files.append({
-                            "path": item["path"],
-                            "content": file_resp.text[:5000],
-                        })
+                if fetched >= self.MAX_FILE_FETCHES:
+                    break
+                if item["type"] != "blob":
+                    continue
+                if not item["path"].endswith((".md", ".py", ".ts", ".js", ".json", ".yaml", ".toml", ".txt")):
+                    continue
+                if item["path"].lower() == "readme.md" or item["path"].lower() == "readme":
+                    continue
+                file_resp = await client.get(
+                    f"{self.GITHUB_API}/repos/{owner}/{repo}/contents/{item['path']}",
+                    headers=self._headers(),
+                )
+                if file_resp.status_code == 200:
+                    relevant_files.append({
+                        "path": item["path"],
+                        "content": file_resp.text[:5000],
+                    })
+                    fetched += 1
 
             return {
                 "repo_name": f"{owner}/{repo}",
@@ -61,6 +82,6 @@ class GitHubFetcher:
         async with httpx.AsyncClient() as client:
             resp = await client.get(
                 f"{self.GITHUB_API}/repos/{owner}/{repo}/readme",
-                headers={"Accept": "application/vnd.github.raw+json"},
+                headers=self._headers(),
             )
             return resp.text if resp.status_code == 200 else None
