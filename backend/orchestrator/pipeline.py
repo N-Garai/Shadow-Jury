@@ -22,6 +22,7 @@ from backend.agents.synthesis.narrative_builder import NarrativeBuilderAgent
 from backend.agents.synthesis.readme_doctor import ReadmeDoctorAgent
 from backend.knowledge.indexer import DocumentIndexer
 from backend.knowledge.kb_client import FoundryIQClient
+from backend.llm import get_llm
 
 
 @dataclass
@@ -86,8 +87,10 @@ class ProjectJuryPipeline:
         )
         self.status = PipelineStatus(id=pipeline_id, state="running", progress=0.0)
 
+        llm = get_llm()
+        llm_status = "AI scoring: GPT-4o-mini (GitHub Models)" if llm.is_available() else "AI scoring: not available (set GITHUB_TOKEN)"
         yield self._evt("pipeline_start", layer=0, agent=None,
-                        desc="Shadow Jury convened. 13 agents preparing for deliberation...")
+                        desc=f"Shadow Jury convened. 13 agents preparing for deliberation. {llm_status}")
 
         try:
             # ── Layer 1: Intake ──
@@ -452,7 +455,9 @@ class ProjectJuryPipeline:
         if kb.is_available():
             parts.append("Microsoft IQ: Foundry IQ (Azure AI Search)")
         else:
-            parts.append("Microsoft IQ: Mock mode (add SEARCH_ENDPOINT + SEARCH_API_KEY)")
+            parts.append("Microsoft IQ: not configured (add SEARCH_ENDPOINT + SEARCH_API_KEY)")
+        llm = get_llm()
+        parts.append("LLM: GPT-4o-mini (GitHub Models)" if llm.is_available() else "LLM: not configured (set GITHUB_TOKEN)")
         return "; ".join(parts)
 
     def _update_progress(self, start: float, end: float, message: str):

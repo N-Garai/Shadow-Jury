@@ -1,49 +1,58 @@
+import json
 from backend.schemas.models import Weakness
+from backend.llm import llm_chat, get_llm
 
 
 class CompetitiveAnalystAgent:
     async def analyze(self, brief: dict) -> tuple[float, list[str], list[Weakness]]:
-        description = brief.get("description", "").lower()
-        title = brief.get("title", "").lower()
-        features = brief.get("features", [])
-        claims = brief.get("claims", [])
+        if get_llm().is_available():
+            return await self._llm_analyze(brief)
+        return self._rule_analyze(brief)
 
-        uniqueness_score = 50
+    async def _llm_analyze(self, brief: dict) -> tuple[float, list[str], list[Weakness]]:
+        system = (
+            "You are a competitive analyst for hackathon projects. Compare this project to typical "
+            "submissions. Return ONLY JSON: {\"competition_score\": 0-100, "
+            "\"opportunities\": [str], \"risks\": [{\"category\": str, \"severity\": str, "
+            "\"description\": str, \"suggestion\": str}]}"
+        )
+        user = json.dumps({
+            "title": brief.get("title"), "description": brief.get("description"),
+            "claims": brief.get("claims"), "features": brief.get("features"),
+            "tech_stack": brief.get("tech_stack"),
+        })
+        result = await llm_chat(system, user, temperature=0.4)
+        try:
+            data = json.loads(result)
+            risks = [Weakness(**r) for r in data.get("risks", [])]
+            return float(data.get("competition_score", 50)), data.get("opportunities", []), risks
+        except Exception:
+            return self._rule_analyze(brief)
+
+    def _rule_analyze(self, brief: dict) -> tuple[float, list[str], list[Weakness]]:
+        features = brief.get("features", [])
+        tech_stack = brief.get("tech_stack", [])
         opportunities = []
         risks = []
 
-        generic_project_types = ["assistant", "chatbot", "helper", "bot", "generator",
-                                 "analyzer", "dashboard", "platform", "tool", "copilot"]
-        found_generic = [t for t in generic_project_types if t in title or t in description]
-
-        if found_generic:
-            uniqueness_score -= 20
-            risks.append(Weakness(
-                category="Competitive Overlap",
-                severity="high",
-                description=f"Project type ({', '.join(found_generic[:3])}) is very common in hackathons",
-                suggestion="Differentiate with a specific niche, unexpected data source, or novel interaction pattern"
-            ))
-            opportunities.append("Focus on a specific underserved use case rather than a general assistant")
-
-        if len(features) >= 4:
-            uniqueness_score += 10
-        else:
+        if len(features) <= 2:
             opportunities.append("Add a differentiating feature that competitors don't have")
 
-        evaluation_keywords = ["score", "evaluat", "judge", "jury", "critique", "assess", "review", "audit"]
-        found_eval = [kw for kw in evaluation_keywords if kw in description]
-        if found_eval:
-            uniqueness_score += 15
-            opportunities.append(f"Your evaluation focus ('{', '.join(found_eval[:2])}') is relatively uncommon — lean into it")
-
-        multi_agent_keywords = ["multi-agent", "ensemble", "panel", "mixture", "orchestrat", "parallel"]
-        found_multi = [kw for kw in multi_agent_keywords if kw in description]
-        if found_multi:
-            uniqueness_score += 15
-        else:
+        if "agent" not in str(brief).lower() and "ensemble" not in str(brief).lower():
             opportunities.append("Consider a multi-agent or ensemble approach for differentiation")
 
-        score = max(10, min(100, uniqueness_score))
+        if not tech_stack:
+            risks.append(Weakness(
+                category="Generic", severity="medium",
+                description="No specific tech stack mentioned — may appear ungrounded",
+                suggestion="List your key technologies to show technical depth"))
 
-        return score, opportunities, risks
+        comp_score = 50.0
+        if len(features) >= 4:
+            comp_score += 20
+        if "azure" in str(tech_stack).lower() or "foundry" in str(tech_stack).lower():
+            comp_score += 15
+        if len(opportunities) <= 1:
+            comp_score += 15
+
+        return comp_score, opportunities, risks
