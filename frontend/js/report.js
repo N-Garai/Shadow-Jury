@@ -12,7 +12,7 @@ function displayReport(report) {
     var scoreCircle = $('scoreCircle');
     var total = report.scorecard.final_score.total;
     scoreCircle.textContent = '0';
-    scoreCircle.className = 'score-circle w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 flex items-center justify-center text-xl sm:text-2xl font-bold ' + scoreColor(total);
+    scoreCircle.className = 'score-circle w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 flex items-center justify-center score-cinema font-bold ' + scoreColor(total);
     var borderColors = { 'text-neon-green': 'border-neon-green', 'text-neon-yellow': 'border-neon-yellow', 'text-neon-red': 'border-neon-red' };
     for (var key in borderColors) {
         if (scoreCircle.classList.contains(key)) { scoreCircle.classList.add(borderColors[key]); break; }

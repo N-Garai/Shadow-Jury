@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <script>
         tailwind.config = {
@@ -30,7 +31,6 @@
         }
     </script>
     <style>
-        body { background: #0f0f1a; color: #e2e8f0; font-family: 'Inter', system-ui, sans-serif; }
         .score-bar { transition: width 1s ease-out; }
         pre { white-space: pre-wrap; word-break: break-word; }
         #deliberationPanel.collapsed #deliberationBody { display: none; }
@@ -40,16 +40,16 @@
     </style>
 </head>
 <body>
-    <!-- Aurora background blobs -->
-    <div class="aurora-blob"></div>
-    <div class="aurora-blob"></div>
-    <div class="aurora-blob"></div>
-    <div class="aurora-blob"></div>
+    <!-- Structured background -->
+    <div class="bg-spotlight"></div>
+    <div class="bg-spotlight"></div>
+    <div class="light-sweep"></div>
+    <div class="light-sweep"></div>
     <div class="noise-overlay"></div>
 
     <div class="min-h-screen flex flex-col relative z-[1]">
         <!-- Navbar -->
-        <nav class="glass border-b border-gray-800/50 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between sticky top-0 z-50">
+        <nav class="glass border-b px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between sticky top-0 z-50" style="border-color:var(--border-glass)">
             <div class="flex items-center gap-2 sm:gap-3 min-w-0">
                 <img src="assets/logo.svg" alt="" class="h-7 w-7 sm:h-8 sm:w-8 shrink-0">
                 <span class="text-base sm:text-lg font-bold tracking-tight whitespace-nowrap">Shadow <span class="text-accent-light">Jury</span></span>
@@ -64,50 +64,93 @@
             </div>
         </nav>
 
-        <main class="flex-1 max-w-6xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
-            <!-- Hero -->
-            <section class="text-center py-6 sm:py-10 reveal">
-                <h1 class="hero-title text-3xl sm:text-4xl md:text-5xl font-bold mb-3 leading-tight">Judge Your <span class="gradient-text">Hackathon</span> Project</h1>
-                <p class="hero-subtitle text-sm sm:text-base text-gray-400/80 max-w-2xl mx-auto px-2 leading-relaxed">Upload your project files, paste your README, or link a GitHub repo. Our <strong class="text-white">13-agent Mixture-of-Agents</strong> panel will score, critique, and improve your submission.</p>
+        <main class="flex-1 max-w-6xl mx-auto w-full px-3 sm:px-4 pt-14">
+            <!-- Hero – sticky scrollytelling -->
+            <section id="heroSticky" class="hero-sticky">
+                <div class="hero-inner w-full max-w-4xl mx-auto px-2">
+                    <div class="verdict-stack hidden xl:block" style="top:50%; left:-80px; transform:translateY(-50%);">
+                        <div class="verdict-card" style="--card-tf:rotateY(-6deg) rotateX(4deg) translateZ(10px);"><i class="fas fa-check-circle" style="color:#22c55e;"></i> Score: 82</div>
+                        <div class="verdict-card" style="--card-tf:rotateY(-3deg) rotateX(2deg) translateZ(0px);"><i class="fas fa-exclamation-triangle" style="color:#eab308;"></i> 3 Issues</div>
+                        <div class="verdict-card" style="--card-tf:rotateY(0deg) rotateX(0deg) translateZ(-10px);"><i class="fas fa-gavel"></i> Verdict</div>
+                    </div>
+                    <div class="verdict-stack hidden xl:block" style="top:50%; right:-80px; transform:translateY(-50%);">
+                        <div class="verdict-card" style="--card-tf:rotateY(6deg) rotateX(-4deg) translateZ(10px);"><i class="fas fa-star" style="color:#a78bfa;"></i> Grade: A</div>
+                        <div class="verdict-card" style="--card-tf:rotateY(3deg) rotateX(-2deg) translateZ(0px);"><i class="fas fa-lightbulb" style="color:#a78bfa;"></i> 5 Fixes</div>
+                        <div class="verdict-card" style="--card-tf:rotateY(0deg) rotateX(0deg) translateZ(-10px);"><i class="fas fa-arrow-right"></i> Improve</div>
+                    </div>
+                    <div style="font-family:'Sora',system-ui,sans-serif;">
+                        <h1 class="hero-title text-3xl sm:text-4xl md:text-5xl font-bold leading-tight">
+                            <span class="hero-line">
+                                <span class="hero-reveal" data-step="1">
+                                    <span class="hero-word">Judge</span> <span class="hero-word">Your</span> <span class="hero-word gradient-text">Hackathon</span>
+                                </span>
+                            </span>
+                            <span class="hero-line">
+                                <span class="hero-reveal" data-step="2">
+                                    <span class="hero-word">Project</span> <span class="hero-word">in</span> <span class="hero-word">Seconds</span>
+                                </span>
+                            </span>
+                        </h1>
+                    </div>
+                    <p class="hero-reveal hero-subtitle text-sm sm:text-base max-w-xl mx-auto leading-relaxed mt-4 sm:mt-5" data-step="3" style="color:var(--text-muted);">Upload files, paste a README, or link a GitHub repo. <strong style="color:var(--text-primary);">13 agents</strong> score, critique, and improve your submission.</p>
+                    <div class="hero-reveal trust-bar mt-6" data-step="4">
+                        <span class="trust-item"><i class="fas fa-balance-scale"></i> Reasoning</span>
+                        <span class="trust-item"><i class="fas fa-file-alt"></i> Evidence</span>
+                        <span class="trust-item"><i class="fas fa-gavel"></i> Verdict</span>
+                        <span class="trust-item"><i class="fas fa-sync-alt"></i> Rewrite</span>
+                    </div>
+                </div>
             </section>
+
+            <!-- Scroll triggers – invisible spacers that pace the reveal -->
+            <div class="scroll-trigger" data-step="1"></div>
+            <div class="scroll-trigger" data-step="2"></div>
+            <div class="scroll-trigger" data-step="3"></div>
+            <div class="scroll-trigger" data-step="4"></div>
 
             <!-- Upload Section -->
             <section id="uploadArea" class="glass rounded-xl p-4 sm:p-6 reveal">
                 <h2 class="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2"><i class="fas fa-cloud-upload-alt text-accent-light"></i> Upload Materials</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                     <!-- File Upload -->
                     <div>
-                        <label class="block text-xs sm:text-sm text-gray-400 mb-1.5"><i class="fas fa-file mr-1"></i> Files</label>
+                        <label class="block text-xs sm:text-sm text-gray-400 mb-2"><i class="fas fa-file mr-1"></i> Files</label>
                         <div id="dropzone" class="dropzone rounded-lg p-4 sm:p-6 text-center cursor-pointer">
-                            <i class="fas fa-file-upload text-xl sm:text-2xl text-gray-500 mb-1.5"></i>
+                            <i class="fas fa-file-upload text-xl sm:text-2xl text-gray-500 mb-2"></i>
                             <p class="text-xs sm:text-sm text-gray-400">Drop files or click to browse</p>
-                            <p class="text-xs text-gray-600 mt-1 hidden sm:block">README.md, code files, any format</p>
+                            <p class="text-xs text-gray-500 mt-1 hidden sm:block">README.md, code files, any format</p>
                             <input id="fileInput" type="file" multiple class="hidden" accept=".md,.py,.js,.ts,.jsx,.tsx,.json,.yaml,.yml,.toml,.txt,.html,.css">
                         </div>
-                        <div id="fileList" class="mt-1.5 sm:mt-2 space-y-1"></div>
+                        <div id="fileList" class="mt-2 space-y-1"></div>
                     </div>
 
                     <!-- Paste Text -->
                     <div>
-                        <label class="block text-xs sm:text-sm text-gray-400 mb-1.5"><i class="fas fa-paste mr-1"></i> Paste README / Description</label>
-                        <textarea id="pasteText" rows="5" class="w-full bg-midnight/60 border border-gray-700/50 rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-gray-200 placeholder-gray-600 focus:border-accent focus:outline-none resize-none transition-colors" placeholder="Paste your project README, description, or any text here..."></textarea>
+                        <label class="block text-xs sm:text-sm text-gray-400 mb-2"><i class="fas fa-paste mr-1"></i> Paste README / Description</label>
+                        <textarea id="pasteText" rows="5" class="w-full rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm placeholder-gray-500 focus:border-accent focus:outline-none resize-none transition-colors" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary);" placeholder="Paste your project README, description, or any text here..."></textarea>
                     </div>
 
                     <!-- GitHub URL -->
                     <div class="sm:col-span-2 lg:col-span-1">
-                        <label class="block text-xs sm:text-sm text-gray-400 mb-1.5"><i class="fab fa-github mr-1"></i> GitHub Repository</label>
-                        <input id="githubUrl" type="url" class="w-full bg-midnight/60 border border-gray-700/50 rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-gray-200 placeholder-gray-600 focus:border-accent focus:outline-none transition-colors" placeholder="https://github.com/user/repo">
-                        <p class="text-xs text-gray-600 mt-1">Public repos only (60 req/hr)</p>
-                        <div id="githubPreview" class="mt-1.5 sm:mt-2"></div>
+                        <label class="block text-xs sm:text-sm text-gray-400 mb-2"><i class="fab fa-github mr-1"></i> GitHub Repository</label>
+                        <input id="githubUrl" type="url" class="w-full rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm placeholder-gray-500 focus:border-accent focus:outline-none transition-colors" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary);" placeholder="https://github.com/user/repo">
+                        <p class="text-xs text-gray-500 mt-1">Public repos only (60 req/hr)</p>
+                        <div id="githubPreview" class="mt-2"></div>
                     </div>
                 </div>
 
-                <div class="mt-3 sm:mt-4 flex items-center gap-3 flex-wrap">
+                <div class="mt-4 sm:mt-6 flex items-center gap-3 sm:gap-4 flex-wrap">
                     <button id="analyzeBtn" onclick="startAnalysis()" class="btn-glow px-5 sm:px-6 py-2.5 bg-accent hover:bg-accent/90 text-white rounded-lg font-medium transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-accent/10">
                         <i class="fas fa-gavel"></i> Start Shadow Jury
                     </button>
-                    <button onclick="resetAll()" class="px-3.5 sm:px-4 py-2.5 border border-gray-700/50 rounded-lg text-xs sm:text-sm text-gray-400 hover:text-white hover:border-gray-600 transition-colors"><i class="fas fa-redo mr-1"></i> Reset</button>
+                    <button onclick="resetAll()" class="px-3.5 sm:px-4 py-2.5 border rounded-lg text-xs sm:text-sm transition-colors" style="border-color:var(--border-glass);color:var(--text-muted);"><i class="fas fa-redo mr-1"></i> Reset</button>
                     <div id="uploadSpinner" class="hidden"><i class="fas fa-spinner fa-spin text-accent-light"></i></div>
+                </div>
+                <div class="mt-3 flex items-center gap-2 flex-wrap">
+                    <span class="text-[10px]" style="color:var(--text-muted);">Try a sample:</span>
+                    <button onclick="loadSample('weak')" class="sample-btn"><i class="fas fa-file-code mr-1"></i>Weak project</button>
+                    <button onclick="loadSample('medium')" class="sample-btn"><i class="fas fa-file-code mr-1"></i>Medium project</button>
+                    <button onclick="loadSample('strong')" class="sample-btn"><i class="fas fa-file-code mr-1"></i>Strong project</button>
                 </div>
             </section>
 
@@ -142,17 +185,18 @@
             <!-- Report -->
             <section id="reportSection" class="hidden space-y-4 sm:space-y-6">
                 <!-- Summary Card -->
-                <div class="glass rounded-xl p-4 sm:p-6 gradient-border">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                <div class="glass rounded-xl p-5 sm:p-7 gradient-border">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-5">
                         <div class="min-w-0">
-                            <h2 class="text-xl sm:text-2xl font-bold truncate"><span id="reportProjectName">Project Name</span></h2>
-                            <p class="text-xs sm:text-sm text-gray-400 mt-0.5 sm:mt-1" id="reportGrade">Grade: --</p>
+                            <div class="text-[10px] font-semibold uppercase tracking-widest" style="color:var(--text-muted);">Verdict</div>
+                            <h2 class="text-xl sm:text-2xl font-bold truncate mt-1" style="font-family:'Sora',system-ui,sans-serif;"><span id="reportProjectName">Project Name</span></h2>
+                            <p class="text-xs sm:text-sm mt-0.5" id="reportGrade" style="color:var(--text-muted);">Grade: --</p>
                         </div>
                         <div class="flex items-center gap-3 sm:gap-4 shrink-0">
-                            <div id="scoreCircle" class="score-circle w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-accent/50 flex items-center justify-center text-xl sm:text-2xl font-bold">--</div>
+                            <div id="scoreCircle" class="score-circle w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 flex items-center justify-center score-cinema font-bold">--</div>
                         </div>
                     </div>
-                    <p id="reportSummary" class="text-xs sm:text-sm text-gray-300 mt-3 sm:mt-4 leading-relaxed"></p>
+                    <p id="reportSummary" class="text-xs sm:text-sm mt-4 sm:mt-5 leading-relaxed" style="color:var(--text-secondary);"></p>
                 </div>
 
                 <!-- Tabs -->
@@ -177,7 +221,7 @@
                 <div id="tabContentExport" class="tab-content hidden">
                     <div class="glass-card rounded-xl p-4 sm:p-6 text-center">
                         <p class="text-xs sm:text-sm text-gray-400 mb-3 sm:mb-4">Download the report as JSON, Markdown, PDF, or copy to clipboard.</p>
-                        <div class="flex justify-center gap-2 sm:gap-3 flex-wrap">
+                        <div class="flex justify-center gap-3 sm:gap-5 flex-wrap">
                             <button onclick="downloadReport()" class="px-3 sm:px-4 py-2 bg-accent hover:bg-accent/80 rounded-lg text-xs sm:text-sm transition-all"><i class="fas fa-download mr-1"></i> JSON</button>
                             <button onclick="downloadMarkdown()" class="px-3 sm:px-4 py-2 bg-neon-blue/20 hover:bg-neon-blue/30 text-neon-blue border border-neon-blue/30 rounded-lg text-xs sm:text-sm transition-all"><i class="fab fa-markdown mr-1"></i> Markdown</button>
                             <button onclick="exportPDF()" class="px-3 sm:px-4 py-2 bg-neon-green/20 hover:bg-neon-green/30 text-neon-green border border-neon-green/30 rounded-lg text-xs sm:text-sm transition-all"><i class="fas fa-file-pdf mr-1"></i> PDF</button>
@@ -194,7 +238,7 @@
             </section>
         </main>
 
-        <footer class="text-center text-[10px] sm:text-xs text-gray-700 py-3 sm:py-4 border-t border-gray-800/50 relative z-[1]">
+        <footer class="text-center text-[10px] sm:text-xs py-3 sm:py-4 border-t relative z-[1]" style="color:var(--text-muted);border-color:var(--border-glass)">
             Shadow Jury — Built with <i class="fas fa-heart text-neon-red"></i> for Hackathon Projects
         </footer>
     </div>

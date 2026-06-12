@@ -218,7 +218,7 @@ The frontend is served via a catch-all route from the same FastAPI process.
 
 ## License
 
-MIT — use it, fork it, remix it for your next hackathon.
+MIT License
 
 ---
 
