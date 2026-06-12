@@ -13,9 +13,15 @@ from backend.github_fetcher.fetcher import GitHubFetcher
 
 app = FastAPI(title="Shadow Jury", version="1.0.0")
 
+_ALLOWED_ORIGINS = [
+    "https://shadow-jury.onrender.com",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
