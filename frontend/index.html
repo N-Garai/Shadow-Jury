@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -30,123 +31,108 @@
     </script>
     <style>
         body { background: #0f0f1a; color: #e2e8f0; font-family: 'Inter', system-ui, sans-serif; }
-        .glass { background: rgba(26, 26, 46, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(124, 58, 237, 0.15); }
-        .glass-hover:hover { background: rgba(26, 26, 46, 0.9); border-color: rgba(124, 58, 237, 0.3); }
-        .gradient-border { position: relative; }
-        .gradient-border::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(135deg, #7c3aed, #3b82f6, #22c55e); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
-        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
-        .animate-slide-up { animation: slideUp 0.4s ease-out; }
-        .animate-pulse-glow { animation: pulseGlow 2s infinite; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 5px rgba(124,58,237,0.3); } 50% { box-shadow: 0 0 20px rgba(124,58,237,0.6); } }
-        .gradient-text { background: linear-gradient(135deg, #a78bfa, #22c55e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .dropzone { border: 2px dashed rgba(124, 58, 237, 0.3); transition: all 0.3s; }
-        .dropzone:hover, .dropzone.dragover { border-color: rgba(124, 58, 237, 0.6); background: rgba(124, 58, 237, 0.05); }
         .score-bar { transition: width 1s ease-out; }
-        .tab-btn.active { border-bottom: 2px solid #7c3aed; color: #a78bfa; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0f0f1a; }
-        ::-webkit-scrollbar-thumb { background: #7c3aed; border-radius: 3px; }
         pre { white-space: pre-wrap; word-break: break-word; }
         #deliberationPanel.collapsed #deliberationBody { display: none; }
         #deliberationPanel.expanded #deliberationBody { display: block; }
         .thinking-item { border-left: 2px solid rgba(124, 58, 237, 0.3); padding-left: 10px; margin-bottom: 8px; }
         .reasoning-block { border-top: 1px solid rgba(124, 58, 237, 0.1); padding-top: 8px; }
-        @media print {
-            body * { visibility: hidden; }
-            #pdfExportContainer, #pdfExportContainer * { visibility: visible; }
-            #pdfExportContainer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: block !important; overflow: visible; }
-            @page { margin: 0.5in; }
-        }
     </style>
 </head>
 <body>
-    <div class="min-h-screen flex flex-col">
+    <!-- Aurora background blobs -->
+    <div class="aurora-blob"></div>
+    <div class="aurora-blob"></div>
+    <div class="aurora-blob"></div>
+    <div class="aurora-blob"></div>
+    <div class="noise-overlay"></div>
+
+    <div class="min-h-screen flex flex-col relative z-[1]">
         <!-- Navbar -->
-        <nav class="glass border-b border-gray-800 px-4 py-3 flex items-center justify-between sticky top-0 z-50">
-            <div class="flex items-center gap-3">
-                <img src="assets/logo.svg" alt="" class="h-8 w-8">
-                <span class="text-lg font-bold tracking-tight">Shadow <span class="text-accent-light">Jury</span></span>
-                <span class="text-xs text-gray-500 hidden sm:inline">| Hackathon Project Evaluator</span>
+        <nav class="glass border-b border-gray-800/50 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between sticky top-0 z-50">
+            <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                <img src="assets/logo.svg" alt="" class="h-7 w-7 sm:h-8 sm:w-8 shrink-0">
+                <span class="text-base sm:text-lg font-bold tracking-tight whitespace-nowrap">Shadow <span class="text-accent-light">Jury</span></span>
+                <span class="text-xs text-gray-500 hidden md:inline opacity-60">| Hackathon Project Evaluator</span>
             </div>
-            <div class="flex items-center gap-4">
-                    <span id="statusBadge" class="text-xs px-2 py-1 rounded-full bg-gray-800 text-gray-400">Ready</span>
-                    <span id="aiModeBadge" class="text-xs px-2 py-1 rounded-full hidden"><i class="fas fa-microchip mr-1"></i><span id="aiModeText"></span></span>
-                <button onclick="document.getElementById('uploadArea').scrollIntoView({behavior:'smooth'})" class="text-xs text-accent-light hover:text-white transition-colors"><i class="fas fa-upload mr-1"></i>Upload</button>
-                <button id="themeToggle" class="text-gray-400 hover:text-white transition-colors text-sm"><i class="fas fa-moon"></i></button>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <span id="statusBadge" class="text-xs px-2 py-1 rounded-full bg-gray-800/80 text-gray-400 whitespace-nowrap">Ready</span>
+                <span id="aiModeBadge" class="text-xs px-2 py-1 rounded-full hidden whitespace-nowrap"><i class="fas fa-microchip mr-1"></i><span id="aiModeText"></span></span>
+                <button onclick="document.getElementById('uploadArea').scrollIntoView({behavior:'smooth'})" class="text-xs text-accent-light hover:text-white transition-colors hidden sm:inline-flex items-center gap-1"><i class="fas fa-upload"></i>Upload</button>
+                <button id="themeToggle" class="text-gray-400 hover:text-white transition-colors text-sm p-1"><i class="fas fa-moon"></i></button>
+                <button id="mobileMenuBtn" class="text-gray-400 hover:text-white sm:hidden text-sm p-1" onclick="toggleMobileMenu()"><i class="fas fa-bars"></i></button>
             </div>
         </nav>
 
-        <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-6 space-y-6">
+        <main class="flex-1 max-w-6xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
             <!-- Hero -->
-            <section class="text-center py-8 animate-fade-in">
-                <h1 class="text-4xl md:text-5xl font-bold mb-3">Judge Your <span class="gradient-text">Hackathon</span> Project</h1>
-                <p class="text-gray-400 max-w-2xl mx-auto">Upload your project files, paste your README, or link a GitHub repo. Our <strong class="text-white">13-agent Mixture-of-Agents</strong> panel will score, critique, and improve your submission.</p>
+            <section class="text-center py-6 sm:py-10 reveal">
+                <h1 class="hero-title text-3xl sm:text-4xl md:text-5xl font-bold mb-3 leading-tight">Judge Your <span class="gradient-text">Hackathon</span> Project</h1>
+                <p class="hero-subtitle text-sm sm:text-base text-gray-400/80 max-w-2xl mx-auto px-2 leading-relaxed">Upload your project files, paste your README, or link a GitHub repo. Our <strong class="text-white">13-agent Mixture-of-Agents</strong> panel will score, critique, and improve your submission.</p>
             </section>
 
             <!-- Upload Section -->
-            <section id="uploadArea" class="glass rounded-xl p-6 animate-slide-up">
-                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2"><i class="fas fa-cloud-upload-alt text-accent-light"></i> Upload Materials</h2>
-                <div class="grid md:grid-cols-3 gap-4">
+            <section id="uploadArea" class="glass rounded-xl p-4 sm:p-6 reveal">
+                <h2 class="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2"><i class="fas fa-cloud-upload-alt text-accent-light"></i> Upload Materials</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     <!-- File Upload -->
                     <div>
-                        <label class="block text-sm text-gray-400 mb-2"><i class="fas fa-file mr-1"></i> Files</label>
-                        <div id="dropzone" class="dropzone rounded-lg p-6 text-center cursor-pointer">
-                            <i class="fas fa-file-upload text-2xl text-gray-500 mb-2"></i>
-                            <p class="text-sm text-gray-400">Drop files or click to browse</p>
-                            <p class="text-xs text-gray-600 mt-1">README.md, code files, any format</p>
+                        <label class="block text-xs sm:text-sm text-gray-400 mb-1.5"><i class="fas fa-file mr-1"></i> Files</label>
+                        <div id="dropzone" class="dropzone rounded-lg p-4 sm:p-6 text-center cursor-pointer">
+                            <i class="fas fa-file-upload text-xl sm:text-2xl text-gray-500 mb-1.5"></i>
+                            <p class="text-xs sm:text-sm text-gray-400">Drop files or click to browse</p>
+                            <p class="text-xs text-gray-600 mt-1 hidden sm:block">README.md, code files, any format</p>
                             <input id="fileInput" type="file" multiple class="hidden" accept=".md,.py,.js,.ts,.jsx,.tsx,.json,.yaml,.yml,.toml,.txt,.html,.css">
                         </div>
-                        <div id="fileList" class="mt-2 space-y-1"></div>
+                        <div id="fileList" class="mt-1.5 sm:mt-2 space-y-1"></div>
                     </div>
 
                     <!-- Paste Text -->
                     <div>
-                        <label class="block text-sm text-gray-400 mb-2"><i class="fas fa-paste mr-1"></i> Paste README / Description</label>
-                        <textarea id="pasteText" rows="6" class="w-full bg-midnight border border-gray-700 rounded-lg p-3 text-sm text-gray-200 placeholder-gray-600 focus:border-accent focus:outline-none resize-none" placeholder="Or paste your project README, description, or any text here..."></textarea>
+                        <label class="block text-xs sm:text-sm text-gray-400 mb-1.5"><i class="fas fa-paste mr-1"></i> Paste README / Description</label>
+                        <textarea id="pasteText" rows="5" class="w-full bg-midnight/60 border border-gray-700/50 rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-gray-200 placeholder-gray-600 focus:border-accent focus:outline-none resize-none transition-colors" placeholder="Paste your project README, description, or any text here..."></textarea>
                     </div>
 
                     <!-- GitHub URL -->
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-2"><i class="fab fa-github mr-1"></i> GitHub Repository</label>
-                        <input id="githubUrl" type="url" class="w-full bg-midnight border border-gray-700 rounded-lg p-3 text-sm text-gray-200 placeholder-gray-600 focus:border-accent focus:outline-none" placeholder="https://github.com/user/repo">
+                    <div class="sm:col-span-2 lg:col-span-1">
+                        <label class="block text-xs sm:text-sm text-gray-400 mb-1.5"><i class="fab fa-github mr-1"></i> GitHub Repository</label>
+                        <input id="githubUrl" type="url" class="w-full bg-midnight/60 border border-gray-700/50 rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-gray-200 placeholder-gray-600 focus:border-accent focus:outline-none transition-colors" placeholder="https://github.com/user/repo">
                         <p class="text-xs text-gray-600 mt-1">Public repos only (60 req/hr)</p>
-                        <div id="githubPreview" class="mt-2"></div>
+                        <div id="githubPreview" class="mt-1.5 sm:mt-2"></div>
                     </div>
                 </div>
 
-                <div class="mt-4 flex items-center gap-3">
-                    <button id="analyzeBtn" onclick="startAnalysis()" class="px-6 py-2.5 bg-accent hover:bg-accent/80 text-white rounded-lg font-medium transition-all animate-pulse-glow flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                <div class="mt-3 sm:mt-4 flex items-center gap-3 flex-wrap">
+                    <button id="analyzeBtn" onclick="startAnalysis()" class="btn-glow px-5 sm:px-6 py-2.5 bg-accent hover:bg-accent/90 text-white rounded-lg font-medium transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-accent/10">
                         <i class="fas fa-gavel"></i> Start Shadow Jury
                     </button>
-                    <button onclick="resetAll()" class="px-4 py-2.5 border border-gray-700 rounded-lg text-sm text-gray-400 hover:text-white transition-colors"><i class="fas fa-redo mr-1"></i> Reset</button>
+                    <button onclick="resetAll()" class="px-3.5 sm:px-4 py-2.5 border border-gray-700/50 rounded-lg text-xs sm:text-sm text-gray-400 hover:text-white hover:border-gray-600 transition-colors"><i class="fas fa-redo mr-1"></i> Reset</button>
                     <div id="uploadSpinner" class="hidden"><i class="fas fa-spinner fa-spin text-accent-light"></i></div>
                 </div>
             </section>
 
             <!-- Progress -->
-            <section id="progressSection" class="hidden glass rounded-xl p-6 animate-fade-in">
-                <div class="flex items-center justify-between mb-3">
-                    <h2 class="text-lg font-semibold flex items-center gap-2"><i class="fas fa-spinner fa-spin text-accent-light"></i> <span id="progressTitle">Evaluating...</span></h2>
-                    <span id="progressPercent" class="text-sm text-gray-400">0%</span>
+            <section id="progressSection" class="hidden glass rounded-xl p-4 sm:p-6">
+                <div class="flex items-center justify-between mb-2 sm:mb-3">
+                    <h2 class="text-sm sm:text-base font-semibold flex items-center gap-2"><i class="fas fa-spinner fa-spin text-accent-light"></i> <span id="progressTitle">Evaluating...</span></h2>
+                    <span id="progressPercent" class="text-xs sm:text-sm text-gray-400">0%</span>
                 </div>
-                <div class="w-full bg-gray-800 rounded-full h-2">
-                    <div id="progressBar" class="score-bar bg-gradient-to-r from-accent to-neon-green h-2 rounded-full" style="width:0%"></div>
+                <div class="w-full bg-gray-800/50 rounded-full h-1.5 sm:h-2">
+                    <div id="progressBar" class="score-bar bg-gradient-to-r from-accent to-neon-green h-1.5 sm:h-2 rounded-full" style="width:0%"></div>
                 </div>
-                <p id="progressMessage" class="text-xs text-gray-500 mt-2">Initializing...</p>
+                <p id="progressMessage" class="text-xs text-gray-500 mt-1.5 sm:mt-2">Initializing...</p>
             </section>
 
             <!-- Agent Deliberation -->
-            <section id="deliberationPanel" class="hidden glass rounded-xl animate-fade-in">
-                <button id="deliberationToggle" onclick="toggleDeliberation()" class="w-full flex items-center justify-between px-6 py-4 text-left cursor-pointer hover:bg-white/5 transition-colors rounded-xl">
-                    <span class="text-sm font-medium text-gray-300"><i class="fas fa-people-arrows text-accent-light mr-2"></i>Jury Deliberation <i id="deliberationChevron" class="fas fa-chevron-down text-xs ml-1"></i></span>
-                    <span class="text-xs text-gray-500">13 agents debating your project</span>
+            <section id="deliberationPanel" class="hidden glass rounded-xl">
+                <button id="deliberationToggle" onclick="toggleDeliberation()" class="w-full flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 text-left cursor-pointer hover:bg-white/[0.02] transition-colors rounded-xl">
+                    <span class="text-xs sm:text-sm font-medium text-gray-300"><i class="fas fa-people-arrows text-accent-light mr-1.5 sm:mr-2"></i>Jury Deliberation <i id="deliberationChevron" class="fas fa-chevron-down text-[10px] sm:text-xs ml-1"></i></span>
+                    <span class="text-[10px] sm:text-xs text-gray-500">13 agents debating your project</span>
                 </button>
-                <div id="deliberationBody" class="px-6 pb-6">
-                    <div id="deliberationAgents" class="space-y-1 max-h-[500px] overflow-y-auto pr-2">
-                        <div class="text-center text-gray-500 text-sm py-8">
-                            <i class="fas fa-spinner fa-spin text-accent-light text-2xl mb-2"></i>
+                <div id="deliberationBody" class="px-4 sm:px-6 pb-4 sm:pb-6">
+                    <div id="deliberationAgents" class="space-y-1 max-h-[400px] sm:max-h-[500px] overflow-y-auto pr-1 sm:pr-2">
+                        <div class="text-center text-gray-500 text-xs sm:text-sm py-6 sm:py-8">
+                            <i class="fas fa-spinner fa-spin text-accent-light text-xl sm:text-2xl mb-2"></i>
                             <p>Waiting for agents to begin deliberation...</p>
                         </div>
                     </div>
@@ -154,61 +140,61 @@
             </section>
 
             <!-- Report -->
-            <section id="reportSection" class="hidden space-y-6 animate-fade-in">
+            <section id="reportSection" class="hidden space-y-4 sm:space-y-6">
                 <!-- Summary Card -->
-                <div class="glass rounded-xl p-6 gradient-border">
-                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <div>
-                            <h2 class="text-2xl font-bold"><span id="reportProjectName">Project Name</span></h2>
-                            <p class="text-sm text-gray-400 mt-1" id="reportGrade">Grade: --</p>
+                <div class="glass rounded-xl p-4 sm:p-6 gradient-border">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                        <div class="min-w-0">
+                            <h2 class="text-xl sm:text-2xl font-bold truncate"><span id="reportProjectName">Project Name</span></h2>
+                            <p class="text-xs sm:text-sm text-gray-400 mt-0.5 sm:mt-1" id="reportGrade">Grade: --</p>
                         </div>
-                        <div class="flex items-center gap-4">
-                            <div id="scoreCircle" class="w-20 h-20 rounded-full border-4 border-accent flex items-center justify-center text-2xl font-bold">--</div>
+                        <div class="flex items-center gap-3 sm:gap-4 shrink-0">
+                            <div id="scoreCircle" class="score-circle w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-accent/50 flex items-center justify-center text-xl sm:text-2xl font-bold">--</div>
                         </div>
                     </div>
-                    <p id="reportSummary" class="text-gray-300 mt-4 text-sm leading-relaxed"></p>
+                    <p id="reportSummary" class="text-xs sm:text-sm text-gray-300 mt-3 sm:mt-4 leading-relaxed"></p>
                 </div>
 
                 <!-- Tabs -->
-                <div class="flex gap-4 border-b border-gray-800 pb-2">
-                    <button class="tab-btn text-sm text-gray-400 pb-2 active" onclick="switchTab('scores', this)"><i class="fas fa-chart-bar mr-1"></i>Scores</button>
-                    <button class="tab-btn text-sm text-gray-400 pb-2" onclick="switchTab('weaknesses', this)"><i class="fas fa-exclamation-triangle mr-1"></i>Weaknesses</button>
-                    <button class="tab-btn text-sm text-gray-400 pb-2" onclick="switchTab('risks', this)"><i class="fas fa-shield-alt mr-1"></i>Risks</button>
-                    <button class="tab-btn text-sm text-gray-400 pb-2" onclick="switchTab('suggestions', this)"><i class="fas fa-lightbulb mr-1"></i>Suggestions</button>
-                    <button class="tab-btn text-sm text-gray-400 pb-2" onclick="switchTab('export', this)"><i class="fas fa-download mr-1"></i>Export</button>
+                <div class="tab-bar border-b border-gray-800/50 pb-0">
+                    <button class="tab-btn text-xs sm:text-sm text-gray-400 pb-2 px-2 sm:px-0 active" onclick="switchTab('scores', this)"><i class="fas fa-chart-bar mr-1"></i>Scores</button>
+                    <button class="tab-btn text-xs sm:text-sm text-gray-400 pb-2 px-2 sm:px-0" onclick="switchTab('weaknesses', this)"><i class="fas fa-exclamation-triangle mr-1"></i>Weaknesses</button>
+                    <button class="tab-btn text-xs sm:text-sm text-gray-400 pb-2 px-2 sm:px-0" onclick="switchTab('risks', this)"><i class="fas fa-shield-alt mr-1"></i>Risks</button>
+                    <button class="tab-btn text-xs sm:text-sm text-gray-400 pb-2 px-2 sm:px-0" onclick="switchTab('suggestions', this)"><i class="fas fa-lightbulb mr-1"></i>Suggestions</button>
+                    <button class="tab-btn text-xs sm:text-sm text-gray-400 pb-2 px-2 sm:px-0" onclick="switchTab('export', this)"><i class="fas fa-download mr-1"></i>Export</button>
                 </div>
 
                 <!-- Tab Content -->
-                <div id="tabContentScores" class="tab-content space-y-3">
-                    <div class="glass rounded-xl p-4" style="max-width:420px; margin:0 auto;">
-                        <canvas id="radarChart" height="400" width="400"></canvas>
+                <div id="tabContentScores" class="tab-content space-y-3 sm:space-y-4">
+                    <div class="glass-card rounded-xl p-3 sm:p-4" style="max-width:400px; margin:0 auto;">
+                        <canvas id="radarChart" height="360" width="360"></canvas>
                     </div>
-                    <div id="criteriaList"></div>
+                    <div id="criteriaList" class="reveal-stagger"></div>
                 </div>
                 <div id="tabContentWeaknesses" class="tab-content hidden space-y-2"></div>
                 <div id="tabContentRisks" class="tab-content hidden space-y-2"></div>
                 <div id="tabContentSuggestions" class="tab-content hidden space-y-2"></div>
                 <div id="tabContentExport" class="tab-content hidden">
-                    <div class="glass rounded-xl p-6 text-center">
-                        <p class="text-gray-400 mb-4">Download the report as JSON, PDF, or copy to clipboard.</p>
-                        <div class="flex justify-center gap-3 flex-wrap">
-                            <button onclick="downloadReport()" class="px-4 py-2 bg-accent hover:bg-accent/80 rounded-lg text-sm"><i class="fas fa-download mr-1"></i> Download JSON</button>
-                            <button onclick="downloadMarkdown()" class="px-4 py-2 bg-neon-blue/20 hover:bg-neon-blue/30 text-neon-blue border border-neon-blue/30 rounded-lg text-sm"><i class="fab fa-markdown mr-1"></i> Download Markdown</button>
-                            <button onclick="exportPDF()" class="px-4 py-2 bg-neon-green/20 hover:bg-neon-green/30 text-neon-green border border-neon-green/30 rounded-lg text-sm"><i class="fas fa-file-pdf mr-1"></i> Export PDF</button>
-                            <button onclick="copyReport()" class="px-4 py-2 border border-gray-700 hover:border-accent rounded-lg text-sm"><i class="fas fa-copy mr-1"></i> Copy to Clipboard</button>
+                    <div class="glass-card rounded-xl p-4 sm:p-6 text-center">
+                        <p class="text-xs sm:text-sm text-gray-400 mb-3 sm:mb-4">Download the report as JSON, Markdown, PDF, or copy to clipboard.</p>
+                        <div class="flex justify-center gap-2 sm:gap-3 flex-wrap">
+                            <button onclick="downloadReport()" class="px-3 sm:px-4 py-2 bg-accent hover:bg-accent/80 rounded-lg text-xs sm:text-sm transition-all"><i class="fas fa-download mr-1"></i> JSON</button>
+                            <button onclick="downloadMarkdown()" class="px-3 sm:px-4 py-2 bg-neon-blue/20 hover:bg-neon-blue/30 text-neon-blue border border-neon-blue/30 rounded-lg text-xs sm:text-sm transition-all"><i class="fab fa-markdown mr-1"></i> Markdown</button>
+                            <button onclick="exportPDF()" class="px-3 sm:px-4 py-2 bg-neon-green/20 hover:bg-neon-green/30 text-neon-green border border-neon-green/30 rounded-lg text-xs sm:text-sm transition-all"><i class="fas fa-file-pdf mr-1"></i> PDF</button>
+                            <button onclick="copyReport()" class="px-3 sm:px-4 py-2 border border-gray-700/50 hover:border-accent/50 rounded-lg text-xs sm:text-sm transition-all"><i class="fas fa-copy mr-1"></i> Copy</button>
                         </div>
                     </div>
                 </div>
             </section>
 
             <!-- Delta Section -->
-            <section id="deltaSection" class="hidden glass rounded-xl p-6 animate-fade-in">
-                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2"><i class="fas fa-code-branch text-neon-green"></i> Improvement Delta</h2>
-                <div id="deltaContent" class="space-y-3"></div>
+            <section id="deltaSection" class="hidden glass rounded-xl p-4 sm:p-6">
+                <h2 class="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2"><i class="fas fa-code-branch text-neon-green"></i> Improvement Delta</h2>
+                <div id="deltaContent" class="space-y-2 sm:space-y-3"></div>
             </section>
         </main>
 
-        <footer class="text-center text-xs text-gray-700 py-4 border-t border-gray-800">
+        <footer class="text-center text-[10px] sm:text-xs text-gray-700 py-3 sm:py-4 border-t border-gray-800/50 relative z-[1]">
             Shadow Jury — Built with <i class="fas fa-heart text-neon-red"></i> for Hackathon Projects
         </footer>
     </div>
@@ -219,9 +205,6 @@
     </div>
 
     <!-- For local dev: API_BASE stays same-origin (handled in api.js) -->
-    <!-- After deploying backend to Render, ADD this line before utils.js:
-         <script>window.API_BASE = 'https://YOUR-APP.onrender.com/api';</script>
-    -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <script src="js/utils.js"></script>

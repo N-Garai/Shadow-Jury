@@ -11,12 +11,13 @@ function displayReport(report) {
 
     var scoreCircle = $('scoreCircle');
     var total = report.scorecard.final_score.total;
-    scoreCircle.textContent = total;
-    scoreCircle.className = 'w-20 h-20 rounded-full border-4 flex items-center justify-center text-2xl font-bold ' + scoreColor(total);
+    scoreCircle.textContent = '0';
+    scoreCircle.className = 'score-circle w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 flex items-center justify-center text-xl sm:text-2xl font-bold ' + scoreColor(total);
     var borderColors = { 'text-neon-green': 'border-neon-green', 'text-neon-yellow': 'border-neon-yellow', 'text-neon-red': 'border-neon-red' };
     for (var key in borderColors) {
         if (scoreCircle.classList.contains(key)) { scoreCircle.classList.add(borderColors[key]); break; }
     }
+    setTimeout(function() { animateValue(scoreCircle, 0, total, 1200); }, 100);
 
     renderCriteria(report.scorecard.criteria || []);
     renderWeaknesses(report.scorecard.weaknesses || []);
@@ -80,7 +81,7 @@ function renderRadarChart(report) {
 function renderCriteria(criteria) {
     var container = $('criteriaList');
     container.innerHTML = criteria.map(function(c) {
-        return '<div class="glass rounded-lg p-4 animate-slide-up criterion-card">' +
+        return '<div class="glass-card rounded-lg p-3 sm:p-4 reveal-child">' +
             '<div class="flex justify-between items-center mb-2">' +
                 '<div><span class="text-sm font-medium">' + c.criterion + '</span><span class="text-xs text-gray-500 ml-2">(weight: ' + c.weight + ')</span></div>' +
                 '<span class="text-sm font-bold ' + scoreColor(c.score) + '">' + c.score + '/100</span>' +
