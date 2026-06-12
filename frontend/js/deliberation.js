@@ -1,4 +1,3 @@
-let deliberationSource = null;
 let agentCards = {};
 let layerContainers = {};
 
@@ -36,8 +35,15 @@ const AGENT_COLORS = {
 function connectDeliberation(pipelineId) {
     const panel = $('deliberationPanel');
     const container = $('deliberationAgents');
+    const toggle = $('deliberationToggle');
+    const chevron = $('deliberationChevron');
+
     panel.classList.remove('hidden');
+    panel.classList.add('expanded');
+    panel.classList.remove('collapsed');
     container.innerHTML = '';
+    toggle.innerHTML = 'Jury Deliberation <i id="deliberationChevron" class="fas fa-chevron-down text-xs ml-1"></i>';
+    chevron.className = 'fas fa-chevron-down text-xs ml-1';
 
     agentCards = {};
     layerContainers = {};
@@ -73,16 +79,31 @@ function connectDeliberation(pipelineId) {
     });
 }
 
+function toggleDeliberation() {
+    const panel = $('deliberationPanel');
+    const chevron = $('deliberationChevron');
+    const isCollapsed = panel.classList.contains('collapsed');
+    if (isCollapsed) {
+        panel.classList.remove('collapsed');
+        panel.classList.add('expanded');
+        chevron.className = 'fas fa-chevron-down text-xs ml-1';
+    } else {
+        panel.classList.add('collapsed');
+        panel.classList.remove('expanded');
+        chevron.className = 'fas fa-chevron-right text-xs ml-1';
+    }
+}
+
 function handleDeliberationEvent(event, container) {
     const { type, layer, agent, description, data } = event;
 
     if (type === 'pipeline_start') {
-        addSystemMessage(container, '⚖️ Shadow Jury convened — 13 agents preparing for deliberation');
+        addSystemMessage(container, 'Shadow Jury convened -- 13 agents preparing for deliberation');
         return;
     }
 
     if (type === 'error') {
-        addSystemMessage(container, `❌ ${description}`, true);
+        addSystemMessage(container, 'Error: ' + description, true);
         return;
     }
 
@@ -93,12 +114,13 @@ function handleDeliberationEvent(event, container) {
 
     if (type === 'pipeline_done') {
         handleLayerEvent('layer_done', 4, description, container);
-        addSystemMessage(container, '✅ ' + description);
+        addSystemMessage(container, 'Complete: ' + description);
         if (data && data.report) {
             setTimeout(() => {
-                hide('deliberationPanel');
+                $('deliberationToggle').innerHTML = 'Show Agent Deliberation <i id="deliberationChevron" class="fas fa-chevron-right text-xs ml-1"></i>';
+                collapseDeliberation();
                 displayReport(data.report);
-            }, 800);
+            }, 600);
         }
         return;
     }
@@ -114,33 +136,32 @@ function handleDeliberationEvent(event, container) {
     }
 }
 
+function collapseDeliberation() {
+    const panel = $('deliberationPanel');
+    panel.classList.add('collapsed');
+    panel.classList.remove('expanded');
+}
+
 function handleLayerEvent(type, layer, description, container) {
-    const layerInfo = LAYER_ICONS[layer] || { icon: 'fa-circle', color: 'text-gray-400', bg: 'bg-gray-800', border: 'border-gray-600', label: `Layer ${layer}` };
+    const layerInfo = LAYER_ICONS[layer] || { icon: 'fa-circle', color: 'text-gray-400', bg: 'bg-gray-800', border: 'border-gray-600', label: 'Layer ' + layer };
 
     if (type === 'layer_start') {
         const div = document.createElement('div');
-        div.className = `layer-header ${layerInfo.bg} ${layerInfo.border} border-l-4 rounded-lg px-4 py-3 mt-4 mb-2`;
+        div.className = 'layer-header ' + layerInfo.bg + ' ' + layerInfo.border + ' border-l-4 rounded-lg px-4 py-3 mt-4 mb-2';
         div.dataset.layer = layer;
-        div.innerHTML = `
-            <div class="flex items-center gap-2">
-                <i class="fas ${layerInfo.icon} ${layerInfo.color}"></i>
-                <span class="text-sm font-semibold ${layerInfo.color}">${layerInfo.label}</span>
-                <span class="text-xs text-gray-500">Layer ${layer}</span>
-            </div>
-            <p class="text-xs text-gray-400 mt-1">${description}</p>
-        `;
+        div.innerHTML = '<div class="flex items-center gap-2"><i class="fas ' + layerInfo.icon + ' ' + layerInfo.color + '"></i><span class="text-sm font-semibold ' + layerInfo.color + '">' + layerInfo.label + '</span><span class="text-xs text-gray-500">Layer ' + layer + '</span></div><p class="text-xs text-gray-400 mt-1">' + description + '</p>';
         container.appendChild(div);
 
         const agentsDiv = document.createElement('div');
         agentsDiv.className = 'space-y-2 mt-2';
-        agentsDiv.id = `layer-agents-${layer}`;
+        agentsDiv.id = 'layer-agents-' + layer;
         container.appendChild(agentsDiv);
         layerContainers[layer] = agentsDiv;
     } else if (type === 'layer_done') {
-        const header = container.querySelector(`[data-layer="${layer}"]`);
+        const header = container.querySelector('[data-layer="' + layer + '"]');
         if (header) {
             const msg = header.querySelector('p');
-            if (msg) msg.textContent = '✅ ' + description;
+            if (msg) msg.textContent = 'Done: ' + description;
         }
     }
 }
@@ -154,25 +175,24 @@ function addAgentCard(agent, layer, description, container) {
     const layerInfo = LAYER_ICONS[layer] || { color: 'text-gray-400' };
 
     const card = document.createElement('div');
-    card.className = `agent-card glass rounded-lg p-3 border-l-4 border-gray-700 animate-slide-up`;
-    card.id = `agent-${agent.replace(/\s+/g, '-').toLowerCase()}`;
+    card.className = 'agent-card glass rounded-lg p-3 border-l-4 border-gray-700 animate-slide-up';
+    card.id = 'agent-' + agent.replace(/\s+/g, '-').toLowerCase();
     card.dataset.status = 'thinking';
-    card.innerHTML = `
-        <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded-full ${layerInfo.color.replace('text', 'bg').replace('300', '800')} flex items-center justify-center flex-shrink-0">
-                <i class="fas ${iconClass} ${colorClass} text-sm"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                    <span class="text-sm font-medium ${colorClass}">${agent}</span>
-                    <span class="text-xs px-1.5 py-0.5 rounded ${layerInfo.color.replace('text', 'bg').replace('300', '900')} ${layerInfo.color}">${layerInfo.label}</span>
-                    <span class="thinking-spinner ml-auto"><i class="fas fa-spinner fa-spin text-accent-light text-xs"></i></span>
-                </div>
-                <p class="text-xs text-gray-400 mt-1 agent-desc">${description}</p>
-                <div class="agent-result mt-2 hidden"></div>
-            </div>
-        </div>
-    `;
+    card.innerHTML =
+        '<div class="flex items-start gap-3">' +
+            '<div class="w-8 h-8 rounded-full ' + layerInfo.color.replace('text', 'bg').replace('300', '800') + ' flex items-center justify-center flex-shrink-0">' +
+                '<i class="fas ' + iconClass + ' ' + colorClass + ' text-sm"></i>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+                '<div class="flex items-center gap-2">' +
+                    '<span class="text-sm font-medium ' + colorClass + '">' + agent + '</span>' +
+                    '<span class="text-xs px-1.5 py-0.5 rounded ' + layerInfo.color.replace('text', 'bg').replace('300', '900') + ' ' + layerInfo.color + '">' + layerInfo.label + '</span>' +
+                    '<span class="thinking-spinner ml-auto"><i class="fas fa-spinner fa-spin text-accent-light text-xs"></i></span>' +
+                '</div>' +
+                '<p class="text-xs text-gray-400 mt-1 agent-desc">' + description + '</p>' +
+                '<div class="agent-result mt-2 hidden"></div>' +
+            '</div>' +
+        '</div>';
 
     layerContainer.appendChild(card);
     agentCards[agent] = card;
@@ -197,62 +217,62 @@ function updateAgentResult(agent, description, data) {
 
         if (data.score !== undefined) {
             const sc = scoreColor(data.score);
-            html += `<span class="text-xs font-bold ${sc}">Score: ${data.score}/100</span>`;
+            html += '<span class="text-xs font-bold ' + sc + '">Score: ' + data.score + '/100</span>';
             if (data.confidence) {
-                html += ` <span class="text-xs text-gray-500">(${Math.round(data.confidence * 100)}% confidence)</span>`;
+                html += ' <span class="text-xs text-gray-500">(' + Math.round(data.confidence * 100) + '% confidence)</span>';
             }
         }
 
         if (data.justification) {
-            html += `<p class="text-xs text-gray-500 mt-1">${data.justification}</p>`;
+            html += '<p class="text-xs text-gray-500 mt-1">' + data.justification + '</p>';
         }
 
         if (data.grade) {
-            html += `<span class="text-xs font-bold ${data.grade === 'A' || data.grade === 'B' ? 'text-neon-green' : 'text-neon-red'}">Grade: ${data.grade}</span>`;
+            html += '<span class="text-xs font-bold ' + (data.grade === 'A' || data.grade === 'B' ? 'text-neon-green' : 'text-neon-red') + '">Grade: ' + data.grade + '</span>';
             if (data.total !== undefined) {
-                html += ` <span class="text-xs text-gray-500">(${data.total}/100)</span>`;
+                html += ' <span class="text-xs text-gray-500">(' + data.total + '/100)</span>';
             }
         }
 
         if (data.weaknesses && data.weaknesses.length) {
-            html += `<div class="mt-1"><span class="text-xs text-neon-red">⚠ ${data.weaknesses.length} weaknesses found</span></div>`;
+            html += '<div class="mt-1"><span class="text-xs text-neon-red">! ' + data.weaknesses.length + ' weaknesses found</span></div>';
         }
 
         if (data.suggestions && data.suggestions.length) {
-            html += `<div class="mt-1"><span class="text-xs text-neon-yellow">💡 ${data.suggestions.length} suggestions</span></div>`;
+            html += '<div class="mt-1"><span class="text-xs text-neon-yellow">* ' + data.suggestions.length + ' suggestions</span></div>';
         }
 
         if (data.claims && data.claims.length) {
-            html += `<div class="mt-1 text-xs text-gray-500">📋 ${data.claims.length} claims, ${data.features ? data.features.length : '?'} features</div>`;
+            html += '<div class="mt-1 text-xs text-gray-500">Claims: ' + data.claims.length + ', Features: ' + (data.features ? data.features.length : '?') + '</div>';
         }
 
         if (data.verified_count !== undefined) {
-            html += `<div class="mt-1 text-xs text-gray-500">✓ ${data.verified_count} verified, ⚑ ${data.flagged_count} flagged</div>`;
+            html += '<div class="mt-1 text-xs text-gray-500">' + data.verified_count + ' verified, ' + data.flagged_count + ' flagged</div>';
         }
 
         if (data.executive_summary) {
-            html += `<p class="text-xs text-gray-500 mt-1">${data.executive_summary.slice(0, 200)}</p>`;
+            html += '<p class="text-xs text-gray-500 mt-1">' + data.executive_summary.slice(0, 200) + '</p>';
         }
 
         if (data.verdict) {
             const verdictText = data.verdict.verdict || data.verdict;
-            html += `<div class="mt-1"><span class="text-xs font-bold ${verdictText.includes('Advance') ? 'text-neon-green' : 'text-neon-red'}">⚖ ${verdictText}</span></div>`;
+            html += '<div class="mt-1"><span class="text-xs font-bold ' + (verdictText.includes('Advance') ? 'text-neon-green' : 'text-neon-red') + '">' + verdictText + '</span></div>';
         }
 
         if (data.citations && data.citations.length) {
-            html += `<div class="mt-1"><span class="text-xs text-accent-light">📄 ${data.citations.length} evidence citations</span></div>`;
+            html += '<div class="mt-1"><span class="text-xs text-accent-light">' + data.citations.length + ' evidence citations</span></div>';
         }
 
         if (data.competition_score !== undefined) {
-            html += `<div class="mt-1"><span class="text-xs text-neon-yellow">🏆 Competition edge: ${data.competition_score}/100</span></div>`;
+            html += '<div class="mt-1"><span class="text-xs text-neon-yellow">Competition edge: ' + data.competition_score + '/100</span></div>';
         }
 
         if (data.chunks_indexed !== undefined) {
-            html += `<div class="mt-1"><span class="text-xs text-accent-light">📦 ${data.chunks_indexed} chunks indexed</span></div>`;
+            html += '<div class="mt-1"><span class="text-xs text-accent-light">' + data.chunks_indexed + ' chunks indexed</span></div>';
         }
 
         if (data.tech_stack && data.tech_stack.length) {
-            html += `<div class="mt-1 text-xs text-gray-500">🔧 ${data.tech_stack.join(', ')}</div>`;
+            html += '<div class="mt-1 text-xs text-gray-500">Tech: ' + data.tech_stack.join(', ') + '</div>';
         }
 
         resultDiv.innerHTML = html;
@@ -260,13 +280,11 @@ function updateAgentResult(agent, description, data) {
 
     card.classList.add('border-opacity-100');
     card.style.borderLeftColor = '#22c55e';
-    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function addSystemMessage(container, message, isError = false) {
-    const div = document.createElement('div');
-    div.className = `text-xs ${isError ? 'text-neon-red' : 'text-gray-400'} py-1 px-2 animate-fade-in`;
+function addSystemMessage(container, message, isError) {
+    var div = document.createElement('div');
+    div.className = 'text-xs ' + (isError ? 'text-neon-red' : 'text-gray-400') + ' py-1 px-2 animate-fade-in';
     div.textContent = message;
     container.appendChild(div);
-    div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
