@@ -6,6 +6,9 @@
     <title>Shadow Jury — Hackathon Project Evaluator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -63,7 +66,7 @@
         <!-- Navbar -->
         <nav class="glass border-b border-gray-800 px-4 py-3 flex items-center justify-between sticky top-0 z-50">
             <div class="flex items-center gap-3">
-                <i class="fas fa-gavel text-accent-light text-xl"></i>
+                <img src="assets/logo.svg" alt="" class="h-8 w-8">
                 <span class="text-lg font-bold tracking-tight">Shadow <span class="text-accent-light">Jury</span></span>
                 <span class="text-xs text-gray-500 hidden sm:inline">| Hackathon Project Evaluator</span>
             </div>
@@ -177,6 +180,9 @@
 
                 <!-- Tab Content -->
                 <div id="tabContentScores" class="tab-content space-y-3">
+                    <div class="glass rounded-xl p-4" style="max-width:420px; margin:0 auto;">
+                        <canvas id="radarChart" height="400" width="400"></canvas>
+                    </div>
                     <div id="criteriaList"></div>
                 </div>
                 <div id="tabContentWeaknesses" class="tab-content hidden space-y-2"></div>
@@ -187,6 +193,7 @@
                         <p class="text-gray-400 mb-4">Download the report as JSON, PDF, or copy to clipboard.</p>
                         <div class="flex justify-center gap-3 flex-wrap">
                             <button onclick="downloadReport()" class="px-4 py-2 bg-accent hover:bg-accent/80 rounded-lg text-sm"><i class="fas fa-download mr-1"></i> Download JSON</button>
+                            <button onclick="downloadMarkdown()" class="px-4 py-2 bg-neon-blue/20 hover:bg-neon-blue/30 text-neon-blue border border-neon-blue/30 rounded-lg text-sm"><i class="fab fa-markdown mr-1"></i> Download Markdown</button>
                             <button onclick="exportPDF()" class="px-4 py-2 bg-neon-green/20 hover:bg-neon-green/30 text-neon-green border border-neon-green/30 rounded-lg text-sm"><i class="fas fa-file-pdf mr-1"></i> Export PDF</button>
                             <button onclick="copyReport()" class="px-4 py-2 border border-gray-700 hover:border-accent rounded-lg text-sm"><i class="fas fa-copy mr-1"></i> Copy to Clipboard</button>
                         </div>
@@ -216,6 +223,7 @@
          <script>window.API_BASE = 'https://YOUR-APP.onrender.com/api';</script>
     -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/api.js"></script>
     <script src="js/upload.js"></script>

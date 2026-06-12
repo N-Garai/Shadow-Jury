@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&amp;display=swap');
+    </style>
+    <linearGradient id="shadowGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4B0082"/>
+      <stop offset="100%" stop-color="#00FF7F"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+  <title>Shadow Jury Icon</title>
+  <desc>Logo representing a multi-agent system with layered intelligence</desc>
+
+  <!-- Circular frame with indigo-to-spring-green gradient -->
+  <circle cx="256" cy="256" r="240" fill="url(#shadowGradient)" stroke="#222" stroke-width="1"/>
+
+  <!-- Stylized SJ monogram with drop shadow -->
+  <g filter="url(#shadow)">
+    <text x="256" y="256" text-anchor="middle" dominant-baseline="central"
+          font-family="Orbitron, 'Segoe UI', system-ui, sans-serif"
+          font-size="180" font-weight="900" fill="#fff">SJ</text>
+  </g>
+</svg>

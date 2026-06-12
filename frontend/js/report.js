@@ -22,8 +22,59 @@ function displayReport(report) {
     renderWeaknesses(report.scorecard.weaknesses || []);
     renderRisks(report.risk_reports || []);
     renderSuggestions(report.suggestions || []);
+    renderRadarChart(report);
 
     showDelta(report);
+}
+
+function renderRadarChart(report) {
+    var canvas = $('radarChart');
+    if (!canvas || !report.scorecard) return;
+    var ctx = canvas.getContext('2d');
+    var criteria = report.scorecard.criteria || [];
+    if (!criteria.length) return;
+
+    if (window._radarChartInstance) window._radarChartInstance.destroy();
+
+    var labels = criteria.map(function(c) { return c.criterion; });
+    var scores = criteria.map(function(c) { return c.score; });
+
+    window._radarChartInstance = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Score',
+                data: scores,
+                backgroundColor: 'rgba(124,58,237,0.15)',
+                borderColor: '#a78bfa',
+                borderWidth: 2,
+                pointBackgroundColor: '#a78bfa',
+                pointBorderColor: '#1a1a2e',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.r + '/100'; } } }
+            },
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: { stepSize: 20, color: '#9ca3af', backdropColor: 'transparent', font: { size: 10 } },
+                    grid: { color: 'rgba(124,58,237,0.1)' },
+                    angleLines: { color: 'rgba(124,58,237,0.1)' },
+                    pointLabels: { color: '#e2e8f0', font: { size: 12, weight: 'bold' } }
+                }
+            }
+        }
+    });
 }
 
 function renderCriteria(criteria) {
@@ -125,6 +176,85 @@ function copyReport() {
             setTimeout(function() { el.innerHTML = '<i class="fas fa-copy mr-1"></i> Copy to Clipboard'; }, 2000);
         })
         .catch(function() { alert('Failed to copy to clipboard'); });
+}
+
+function downloadMarkdown() {
+    if (!currentReport) return;
+    var r = currentReport, sc = r.scorecard || {}, fs = sc.final_score || {}, narrative = r.narrative || {}, rec = narrative.recommendation || {};
+
+    var md = '# Shadow Jury Report\n\n';
+    md += '**Project:** ' + (r.project_name || 'Untitled') + '  \n';
+    md += '**Grade:** ' + (fs.grade || '--') + '  \n';
+    md += '**Total Score:** ' + (fs.total || 0) + '/100  \n';
+    md += '**Risk Level:** ' + (fs.risk_level || '--') + '  \n';
+    md += '**Competition Score:** ' + (sc.competition_score || 0) + '/100  \n';
+    md += '**Date:** ' + formatDate() + '  \n\n';
+
+    if (narrative.executive_summary) md += '## Executive Summary\n\n' + narrative.executive_summary + '\n\n';
+
+    md += '## Criteria Scores\n\n| Criterion | Score | Weight | Confidence |\n|---|---|---|---|\n';
+    (sc.criteria || []).forEach(function(c) { md += '| ' + c.criterion + ' | ' + c.score + '/100 | ' + c.weight + ' | ' + Math.round(c.confidence * 100) + '% |\n'; });
+    md += '\n';
+
+    (sc.criteria || []).forEach(function(c) {
+        md += '### ' + c.criterion + ' (' + c.score + '/100)\n\n' + (c.justification || 'No justification.') + '\n\n';
+        if (c.citations && c.citations.length) {
+            md += '**Evidence:**\n';
+            c.citations.forEach(function(ct) { md += '- ' + ct.content + ' (source: ' + ct.source + ', relevance: ' + Math.round(ct.relevance_score * 100) + '%)\n'; });
+            md += '\n';
+        }
+    });
+
+    if (sc.weaknesses && sc.weaknesses.length) {
+        md += '## Weaknesses\n\n';
+        sc.weaknesses.forEach(function(w) { md += '### [' + w.severity.toUpperCase() + '] ' + w.category + '\n\n' + w.description + '\n\n> **Suggestion:** ' + w.suggestion + '\n\n'; });
+    }
+
+    if (r.risk_reports && r.risk_reports.length) {
+        md += '## Risk Reports\n\n';
+        r.risk_reports.forEach(function(risk) { md += '### ' + risk.category + ' (' + risk.severity + ')\n\n' + risk.description + '\n\n> **Recommendation:** ' + (risk.recommendation || '') + '\n\n'; });
+    }
+
+    if (r.suggestions && r.suggestions.length) { md += '## Suggestions\n\n'; r.suggestions.forEach(function(s) { md += '- ' + s + '\n'; }); md += '\n'; }
+
+    md += '## Agent Deliberation & Thinking\n\n';
+    var agentCards = document.querySelectorAll('.agent-card');
+    if (agentCards.length > 0) {
+        agentCards.forEach(function(card) {
+            var nameEl = card.querySelector('.text-sm\\.font-medium');
+            if (!nameEl) nameEl = card.querySelector('.text-sm.font-medium');
+            var layerEl = card.querySelector('[class*="px-1"]');
+            var resultEl = card.querySelector('.agent-result');
+            var descEl = card.querySelector('.agent-desc');
+            var reasoningEl = card.querySelector('[id^="reasoning-"]');
+            var agentName = nameEl ? nameEl.textContent.trim() : 'Unknown Agent';
+            var layerName = layerEl ? layerEl.textContent.trim() : '';
+            var desc = descEl ? descEl.textContent.trim() : '';
+            md += '### ' + agentName + (layerName ? ' (' + layerName + ')' : '') + '\n\n';
+            if (desc) md += desc + '\n\n';
+            if (resultEl) { var rt = resultEl.textContent.trim(); if (rt) md += rt + '\n\n'; }
+            if (reasoningEl) {
+                reasoningEl.querySelectorAll('.thinking-item').forEach(function(item) {
+                    var label = item.querySelector('.text-gray-400'); var text = item.querySelector('.text-gray-300');
+                    var l = label ? label.textContent.trim() : ''; var t = text ? text.textContent.trim() : '';
+                    if (l && t) md += '**' + l + ':**\n\n' + t + '\n\n';
+                });
+            }
+        });
+    } else { md += '*Deliberation data not available. Run a project first to see agent thinking.*\n\n'; }
+
+    if (rec.verdict) {
+        md += '## Verdict\n\n**' + rec.verdict + '**  \nConfidence: ' + Math.round((rec.confidence || 0) * 100) + '%  \n';
+        if (rec.key_action_items && rec.key_action_items.length) { md += '\n**Key Actions:**\n\n'; rec.key_action_items.forEach(function(a, i) { md += (i+1) + '. ' + a + '\n'; }); md += '\n'; }
+    }
+
+    if (r.execution_summary) md += '---\n\n*' + r.execution_summary + '*\n\n';
+    md += '---\n\n*Generated by Shadow Jury — ' + formatDate() + '*\n';
+
+    var blob = new Blob([md], { type: 'text/markdown' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url; a.download = 'shadow-jury-report-' + Date.now() + '.md'; a.click();
+    URL.revokeObjectURL(url);
 }
 
 function exportPDF() {
