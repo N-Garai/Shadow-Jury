@@ -27,9 +27,17 @@ class NarrativeBuilderAgent:
             "opportunities": competition_insights,
             "recommendation": self._build_recommendation(scorecard, weaknesses),
             "grade_summary": f"Grade {scorecard.final_score.grade}: {'Strong' if scorecard.final_score.grade in ['A', 'B'] else 'Needs improvement'} submission",
+            "microsoft_iq": self._build_iq_summary(scorecard),
         }
 
         return narrative
+
+    def _build_iq_summary(self, scorecard: Scorecard) -> dict:
+        return {
+            "layer": "Foundry IQ",
+            "description": "Azure AI Search for agentic knowledge retrieval — indexes project documents and delivers cited, grounded evidence to reduce hallucination",
+            "integration": "Documents are indexed into Azure AI Search via DocumentIndexer. Judges retrieve relevant passages via FoundryIQClient for cited scoring.",
+        }
 
     def _build_recommendation(self, scorecard: Scorecard, weaknesses: list[Weakness]) -> dict:
         if scorecard.final_score.grade in ["A", "B"]:

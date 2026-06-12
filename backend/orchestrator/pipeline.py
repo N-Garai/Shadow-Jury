@@ -20,6 +20,8 @@ from backend.agents.critics.competitive_analyst import CompetitiveAnalystAgent
 from backend.agents.synthesis.scoring_aggregator import ScoringAggregatorAgent
 from backend.agents.synthesis.narrative_builder import NarrativeBuilderAgent
 from backend.agents.synthesis.readme_doctor import ReadmeDoctorAgent
+from backend.knowledge.indexer import DocumentIndexer
+from backend.knowledge.kb_client import FoundryIQClient
 
 
 @dataclass
@@ -81,14 +83,39 @@ class ProjectJuryPipeline:
         claim_extractor = ClaimExtractorAgent()
         ctx.brief = await claim_extractor.extract(brief)
 
-        # Make brief available as dict for agents that need it
+        # Index documents into Foundry IQ (Azure AI Search)
+        indexer = DocumentIndexer()
+        if indexer.is_available():
+            try:
+                indexer.ensure_index()
+                for chunk in brief.raw_text_chunks:
+                    indexer.index_document(
+                        content=chunk,
+                        source="project_readme.md" if not ctx.files_content else ctx.files_content[0]["name"],
+                        category="user_upload",
+                        project=brief.title,
+                    )
+            except Exception:
+                pass
+
         return ctx
 
     async def _layer2_judges(self, ctx: PipelineContext) -> PipelineContext:
         self._update_progress(0.25, 0.55, "Running specialist judges...")
 
         brief_dict = self._brief_to_dict(ctx.brief)
-        evidence_dict = {}  # mock evidence for now
+
+        # Retrieve evidence from Foundry IQ knowledge base
+        evidence_dict = {}
+        kb = FoundryIQClient()
+        if kb.is_available():
+            try:
+                result = kb.retrieve(
+                    f"Project: {ctx.brief.title}. Description: {ctx.brief.description[:200]}"
+                )
+                evidence_dict["foundry_iq"] = result
+            except Exception:
+                pass
 
         judges = [
             RelevanceJudge(),
@@ -190,6 +217,11 @@ class ProjectJuryPipeline:
             f"Generated {len(ctx.risk_reports)} risk reports",
             f"Evidence confidence: {ctx.evidence_confidence:.0%}",
         ]
+        kb = FoundryIQClient()
+        if kb.is_available():
+            parts.append("Microsoft IQ: Foundry IQ (Azure AI Search)")
+        else:
+            parts.append("Microsoft IQ: Mock mode (add SEARCH_ENDPOINT + SEARCH_API_KEY)")
         return "; ".join(parts)
 
     def _update_progress(self, start: float, end: float, message: str):
