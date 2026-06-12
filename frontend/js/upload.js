@@ -61,6 +61,7 @@ async function startAnalysis() {
     show('progressSection');
     $('reportSection').classList.add('hidden');
     $('deltaSection').classList.add('hidden');
+    $('deliberationPanel').classList.add('hidden');
     $('progressTitle').textContent = 'Uploading files...';
     $('progressMessage').textContent = 'Sending files to Shadow Jury...';
     $('statusBadge').textContent = 'Uploading';
@@ -71,20 +72,13 @@ async function startAnalysis() {
         const githubUrl = $('githubUrl').value;
         const uploadResult = await apiUpload(uploadedFiles.length > 0 ? uploadedFiles : null, pasteText, githubUrl);
 
-        $('progressTitle').textContent = 'Running Shadow Jury pipeline...';
-        $('progressMessage').textContent = '13 agents evaluating your project...';
-        $('statusBadge').textContent = 'Evaluating';
-        $('statusBadge').className = 'text-xs px-2 py-1 rounded-full bg-blue-900 text-blue-300';
+        // Hide progress bar, show deliberation panel
+        hide('progressSection');
+        $('statusBadge').textContent = 'Deliberating';
+        $('statusBadge').className = 'text-xs px-2 py-1 rounded-full bg-purple-900 text-purple-300';
 
-        const result = await apiRunPipeline(uploadResult.pipeline_id);
-
-        $('progressBar').style.width = '100%';
-        $('progressPercent').textContent = '100%';
-        $('progressMessage').textContent = 'Evaluation complete!';
-        $('statusBadge').textContent = 'Complete';
-        $('statusBadge').className = 'text-xs px-2 py-1 rounded-full bg-green-900 text-green-300';
-
-        displayReport(result.report);
+        // Connect to SSE stream for live agent deliberation
+        connectDeliberation(uploadResult.pipeline_id);
     } catch (err) {
         $('progressTitle').textContent = 'Error';
         $('progressMessage').textContent = err.message;
@@ -106,6 +100,7 @@ function resetAll() {
     $('reportSection').classList.add('hidden');
     $('deltaSection').classList.add('hidden');
     $('progressSection').classList.add('hidden');
+    $('deliberationPanel').classList.add('hidden');
     $('progressBar').style.width = '0%';
     $('progressPercent').textContent = '0%';
     $('statusBadge').textContent = 'Ready';

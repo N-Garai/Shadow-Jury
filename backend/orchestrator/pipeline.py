@@ -74,6 +74,239 @@ class ProjectJuryPipeline:
 
         return ctx.report
 
+    async def run_stream(self, pipeline_id: str, files_content: list[dict],
+                         paste_text: Optional[str] = None,
+                         github_data: Optional[dict] = None):
+        """Async generator that yields deliberation events as the pipeline runs."""
+
+        ctx = PipelineContext(
+            files_content=files_content,
+            paste_text=paste_text,
+            github_data=github_data,
+        )
+        self.status = PipelineStatus(id=pipeline_id, state="running", progress=0.0)
+
+        yield self._evt("pipeline_start", layer=0, agent=None,
+                        desc="Shadow Jury convened. 13 agents preparing for deliberation...")
+
+        try:
+            # ── Layer 1: Intake ──
+            yield self._evt("layer_start", layer=1, agent=None,
+                            desc="Intake Layer — parsing project files and extracting claims")
+            yield self._evt("agent_start", layer=1, agent="Doc Parser",
+                            desc="Reading uploaded files and GitHub README...")
+            doc_parser = DocParserAgent()
+            brief = await doc_parser.parse(ctx.files_content, ctx.paste_text, ctx.github_data)
+            yield self._evt("agent_result", layer=1, agent="Doc Parser",
+                            desc=f"Parsed project: {brief.title}",
+                            data={"title": brief.title, "description": brief.description[:150]})
+
+            yield self._evt("agent_start", layer=1, agent="Claim Extractor",
+                            desc="Extracting claims, features, and goals from project materials...")
+            claim_extractor = ClaimExtractorAgent()
+            ctx.brief = await claim_extractor.extract(brief)
+            yield self._evt("agent_result", layer=1, agent="Claim Extractor",
+                            desc=f"Extracted {len(ctx.brief.claims)} claims, {len(ctx.brief.features)} features",
+                            data={"claims": ctx.brief.claims, "features": ctx.brief.features,
+                                  "goals": ctx.brief.goals, "tech_stack": ctx.brief.tech_stack})
+
+            yield self._evt("agent_start", layer=1, agent="Foundry IQ Indexer",
+                            desc="Indexing documents into Azure AI Search for grounded retrieval...")
+            indexer = DocumentIndexer()
+            indexed_count = 0
+            if indexer.is_available():
+                try:
+                    indexer.ensure_index()
+                    for chunk in brief.raw_text_chunks:
+                        indexer.index_document(
+                            content=chunk,
+                            source="project_readme.md" if not ctx.files_content else ctx.files_content[0]["name"],
+                            category="user_upload",
+                            project=brief.title,
+                        )
+                        indexed_count += 1
+                except Exception:
+                    pass
+            yield self._evt("agent_result", layer=1, agent="Foundry IQ Indexer",
+                            desc=f"Indexed {indexed_count} document chunks" if indexed_count
+                                 else "Foundry IQ not available (no SEARCH_ENDPOINT configured)",
+                            data={"chunks_indexed": indexed_count})
+            yield self._evt("layer_done", layer=1, agent=None,
+                            desc="Intake complete — project brief ready for judging")
+
+            # ── Layer 2: Judges ──
+            yield self._evt("layer_start", layer=2, agent=None,
+                            desc="Judges Layer — 5 specialist judges scoring your project")
+            brief_dict = self._brief_to_dict(ctx.brief)
+
+            evidence_dict = {}
+            kb = FoundryIQClient()
+            if kb.is_available():
+                yield self._evt("agent_start", layer=2, agent="Foundry IQ Retriever",
+                                desc="Retrieving relevant evidence from knowledge base...")
+                try:
+                    result = kb.retrieve(
+                        f"Project: {ctx.brief.title}. Description: {ctx.brief.description[:200]}"
+                    )
+                    evidence_dict["foundry_iq"] = result
+                    citations = result.get("citations", [])
+                    yield self._evt("agent_result", layer=2, agent="Foundry IQ Retriever",
+                                    desc=f"Retrieved {len(citations)} relevant document passages",
+                                    data={"citations": citations})
+                except Exception:
+                    yield self._evt("agent_result", layer=2, agent="Foundry IQ Retriever",
+                                    desc="Retrieval failed — proceeding with mock evidence")
+
+            judges = [
+                ("Relevance Judge", RelevanceJudge(), "Evaluating how well the project fits the selected track and requirements"),
+                ("Reasoning Judge", ReasoningJudge(), "Assessing multi-step thinking and agent orchestration patterns"),
+                ("Creativity Judge", CreativityJudge(), "Measuring originality, novelty, and surprising elements"),
+                ("UX Judge", UXJudge(), "Analyzing user experience quality and demo readiness"),
+                ("Safety Judge", SafetyJudge(), "Checking reliability, safety, and ethical considerations"),
+            ]
+
+            results = []
+            for name, judge, purpose in judges:
+                yield self._evt("agent_start", layer=2, agent=name,
+                                desc=purpose)
+                await asyncio.sleep(0.1)
+                score = await judge.evaluate(brief_dict, evidence_dict)
+                results.append(score)
+                yield self._evt("agent_result", layer=2, agent=name,
+                                desc=f"Score: {score.score}/100 (confidence: {score.confidence:.0%}) — {score.justification[:120]}",
+                                data={"criterion": score.criterion, "score": score.score,
+                                      "weight": score.weight, "confidence": score.confidence,
+                                      "justification": score.justification,
+                                      "citations": [c.model_dump() for c in (score.citations or [])]})
+
+            ctx.scores = list(results)
+            yield self._evt("layer_done", layer=2, agent=None,
+                            desc=f"All 5 judges have submitted their scores")
+
+            # ── Layer 3: Critics ──
+            yield self._evt("layer_start", layer=3, agent=None,
+                            desc="Critics Layer — stress-testing the project and verifying evidence")
+            brief_dict = self._brief_to_dict(ctx.brief)
+
+            yield self._evt("agent_start", layer=3, agent="Devil's Advocate",
+                            desc="Challenging weak claims, missing proof, and risky assumptions...")
+            devils = DevilsAdvocateAgent()
+            weaknesses, penalties = await devils.critique(brief_dict, ctx.scores)
+            ctx.weaknesses = weaknesses
+            ctx.penalties = penalties
+            yield self._evt("agent_result", layer=3, agent="Devil's Advocate",
+                            desc=f"Identified {len(weaknesses)} weaknesses with penalties: {penalties}",
+                            data={"weaknesses": [{"category": w.category, "severity": w.severity,
+                                                   "description": w.description, "suggestion": w.suggestion}
+                                                  for w in weaknesses],
+                                  "penalties": penalties})
+
+            yield self._evt("agent_start", layer=3, agent="Evidence Verifier",
+                            desc="Cross-checking scoring evidence and flagging unsupported claims...")
+            verifier = EvidenceVerifierAgent()
+            verified, flagged, confidence = await verifier.verify(ctx.scores)
+            ctx.verified_evidence = verified
+            ctx.flagged_evidence = flagged
+            ctx.evidence_confidence = confidence
+            yield self._evt("agent_result", layer=3, agent="Evidence Verifier",
+                            desc=f"Verified {len(verified)} evidence items, flagged {len(flagged)} issues (confidence: {confidence:.0%})",
+                            data={"verified_count": len(verified), "flagged_count": len(flagged),
+                                  "confidence": confidence})
+
+            yield self._evt("agent_start", layer=3, agent="Competitive Analyst",
+                            desc="Benchmarking against other submissions in the same space...")
+            analyst = CompetitiveAnalystAgent()
+            comp_score, opportunities, comp_risks = await analyst.analyze(brief_dict)
+            ctx.competition_score = comp_score
+            ctx.competition_insights = opportunities
+            ctx.weaknesses.extend(comp_risks)
+            yield self._evt("agent_result", layer=3, agent="Competitive Analyst",
+                            desc=f"Competitive edge score: {comp_score}/100. {len(opportunities)} opportunities identified",
+                            data={"competition_score": comp_score, "opportunities": opportunities,
+                                  "risks": [{"category": r.category, "severity": r.severity,
+                                              "description": r.description, "suggestion": r.suggestion}
+                                             for r in comp_risks]})
+            yield self._evt("layer_done", layer=3, agent=None,
+                            desc="Critique complete — project weaknesses and risks documented")
+
+            # ── Layer 4: Synthesis ──
+            yield self._evt("layer_start", layer=4, agent=None,
+                            desc="Synthesis Layer — aggregating scores, building narrative, generating report")
+            yield self._evt("agent_start", layer=4, agent="Scoring Aggregator",
+                            desc="Weighting and aggregating all judge scores into final scorecard...")
+            aggregator = ScoringAggregatorAgent()
+            scorecard = await aggregator.aggregate(ctx.scores, ctx.weaknesses,
+                                                    ctx.penalties, ctx.competition_score)
+            ctx.scorecard = scorecard
+            yield self._evt("agent_result", layer=4, agent="Scoring Aggregator",
+                            desc=f"Final grade: {scorecard.final_score.grade} (total: {scorecard.final_score.total:.1f}/100)",
+                            data={"grade": scorecard.final_score.grade,
+                                  "total": scorecard.final_score.total,
+                                  "risk_level": scorecard.final_score.risk_level,
+                                  "criteria": [{"criterion": c.criterion, "score": c.score,
+                                                 "weight": c.weight, "confidence": c.confidence}
+                                               for c in scorecard.criteria]})
+
+            yield self._evt("agent_start", layer=4, agent="Narrative Builder",
+                            desc="Crafting executive summary, strengths, weaknesses, and recommendations...")
+            narrative_builder = NarrativeBuilderAgent()
+            narrative = await narrative_builder.build_narrative(ctx.brief, scorecard,
+                                                                  ctx.competition_insights,
+                                                                  ctx.weaknesses)
+            yield self._evt("agent_result", layer=4, agent="Narrative Builder",
+                            desc=f"Verdict: {narrative.get('recommendation', {}).get('verdict', 'N/A')}",
+                            data={"executive_summary": narrative.get("executive_summary", ""),
+                                  "verdict": narrative.get("recommendation", {}),
+                                  "opportunities": narrative.get("opportunities", [])})
+
+            yield self._evt("agent_start", layer=4, agent="README Doctor",
+                            desc="Analyzing README completeness and generating actionable suggestions...")
+            doctor = ReadmeDoctorAgent()
+            brief_dict = self._brief_to_dict(ctx.brief)
+            brief_readme = self._extract_readme(ctx.files_content)
+            if not brief_readme and ctx.github_data and ctx.github_data.get("readme_content"):
+                brief_readme = ctx.github_data["readme_content"][:2000]
+            brief_dict["readme"] = brief_readme
+            risks, suggestions = await doctor.diagnose(brief_dict, ctx.weaknesses,
+                                                        ctx.competition_insights)
+            ctx.risk_reports = risks
+            yield self._evt("agent_result", layer=4, agent="README Doctor",
+                            desc=f"Generated {len(suggestions)} suggestions and {len(risks)} risk reports",
+                            data={"risks": [{"category": r.category, "severity": r.severity,
+                                              "description": r.description, "recommendation": r.recommendation}
+                                             for r in risks],
+                                  "suggestions": suggestions})
+
+            ctx.report = FinalReport(
+                project_name=ctx.brief.title,
+                scorecard=scorecard,
+                narrative=narrative,
+                risk_reports=risks,
+                suggestions=suggestions,
+                pipeline_id=self.status.id,
+                execution_summary=self._build_execution_summary(ctx),
+            )
+
+            yield self._evt("pipeline_done", layer=4, agent=None,
+                            desc="Shadow Jury deliberation complete. Delivering final verdict...",
+                            data={"report": ctx.report.model_dump()})
+
+        except Exception as e:
+            yield self._evt("error", layer=0, agent=None,
+                            desc=f"Pipeline error: {str(e)}")
+            self.status = PipelineStatus(id=pipeline_id, state="failed", progress=0.0, error=str(e))
+            raise
+
+    def _evt(self, event_type: str, layer: int, agent: Optional[str],
+             desc: str, data: Optional[dict] = None):
+        return {
+            "type": event_type,
+            "layer": layer,
+            "agent": agent,
+            "description": desc,
+            "data": data or {},
+        }
+
     async def _layer1_intake(self, ctx: PipelineContext) -> PipelineContext:
         self._update_progress(0.0, 0.25, "Parsing project documents...")
 
@@ -83,7 +316,6 @@ class ProjectJuryPipeline:
         claim_extractor = ClaimExtractorAgent()
         ctx.brief = await claim_extractor.extract(brief)
 
-        # Index documents into Foundry IQ (Azure AI Search)
         indexer = DocumentIndexer()
         if indexer.is_available():
             try:
@@ -105,7 +337,6 @@ class ProjectJuryPipeline:
 
         brief_dict = self._brief_to_dict(ctx.brief)
 
-        # Retrieve evidence from Foundry IQ knowledge base
         evidence_dict = {}
         kb = FoundryIQClient()
         if kb.is_available():
@@ -166,8 +397,8 @@ class ProjectJuryPipeline:
 
         narrative_builder = NarrativeBuilderAgent()
         narrative = await narrative_builder.build_narrative(ctx.brief, scorecard,
-                                                             ctx.competition_insights,
-                                                             ctx.weaknesses)
+                                                              ctx.competition_insights,
+                                                              ctx.weaknesses)
 
         doctor = ReadmeDoctorAgent()
         brief_dict = self._brief_to_dict(ctx.brief)

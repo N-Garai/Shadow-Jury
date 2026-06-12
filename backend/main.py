@@ -5,7 +5,7 @@ from typing import Optional
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, FileResponse, Response
+from fastapi.responses import HTMLResponse, FileResponse, Response, StreamingResponse
 
 from backend.orchestrator.pipeline import ProjectJuryPipeline
 from backend.schemas.models import FinalReport, PipelineStatus
@@ -95,6 +95,37 @@ async def run_pipeline(pipeline_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
     return {"status": "completed", "report": report.model_dump()}
+
+
+@app.post("/api/run/stream/{pipeline_id}")
+async def run_pipeline_stream(pipeline_id: str):
+    if pipeline_id not in pipelines:
+        raise HTTPException(status_code=404, detail="Pipeline not found")
+
+    pipeline = pipelines[pipeline_id]
+    data = getattr(pipeline, "upload_data", None) or {}
+
+    async def event_stream():
+        try:
+            async for event in pipeline.run_stream(
+                pipeline_id,
+                data.get("files_content", []),
+                data.get("paste_text"),
+                data.get("github_data"),
+            ):
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'description': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.get("/api/status/{pipeline_id}")

@@ -9,4 +9,6 @@ venv/
 *.egg-info/
 dist/
 build/
+shadow-jury-report-*.json
+backend/_reports/
 
