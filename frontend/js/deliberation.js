@@ -233,7 +233,10 @@ function updateAgentResult(agent, description, data) {
     card.dataset.status = 'done';
 
     var spinner = card.querySelector('.thinking-spinner');
-    if (spinner) spinner.innerHTML = '<i class="fas fa-check-circle text-neon-green text-xs"></i>';
+    var aiBadge = $('aiModeText');
+    var mode = aiBadge ? aiBadge.textContent : '';
+    var icon = mode.indexOf('GPT') > -1 ? 'fas fa-check-circle text-neon-green' : 'fas fa-check-circle text-gray-400';
+    if (spinner) spinner.innerHTML = '<i class="' + icon + ' text-xs"></i> <span class="text-xs text-gray-600 ml-1">' + mode + '</span>';
 
     var desc = card.querySelector('.agent-desc');
     if (desc) desc.textContent = description;

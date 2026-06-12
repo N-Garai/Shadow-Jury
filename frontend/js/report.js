@@ -128,22 +128,21 @@ function copyReport() {
 }
 
 function exportPDF() {
-    // Temporarily expand all deliberation content and show all tabs
-    var panel = $('deliberationPanel');
-    var wasCollapsed = panel.classList.contains('collapsed');
-    if (wasCollapsed) {
-        panel.classList.remove('collapsed');
-        panel.classList.add('expanded');
-    }
+    if (!currentReport) return;
 
-    // Show all tab contents for print capture
-    var tabContents = document.querySelectorAll('.tab-content');
-    var tabBtns = document.querySelectorAll('.tab-btn');
-    var hiddenStates = [];
-    tabContents.forEach(function(tc) {
-        hiddenStates.push(tc.classList.contains('hidden'));
-        tc.classList.remove('hidden');
-    });
+    var btn = event && event.target ? event.target : $('exportBtn');
+    var orig = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Generating...';
+    btn.disabled = true;
+
+    // Build clean PDF HTML
+    var html = buildPDFContent(currentReport);
+
+    // Populate hidden container
+    var container = $('pdfExportContainer');
+    var content = $('pdfContent');
+    content.innerHTML = html;
+    container.style.display = 'block';
 
     if (typeof html2pdf !== 'undefined') {
         var opt = {
@@ -154,43 +153,235 @@ function exportPDF() {
             jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
         };
 
-        var btn = event && event.target ? event.target : $('exportBtn');
-        var orig = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Generating...';
-        btn.disabled = true;
-
-        html2pdf().set(opt).from(document.body).save().then(function() {
-            restorePrintState(wasCollapsed, hiddenStates, tabContents, btn, orig);
+        html2pdf().set(opt).from(container).save().then(function() {
+            cleanupPDF(container, content, btn, orig);
         }).catch(function() {
-            // Fallback to window.print
-            fallbackPrint(wasCollapsed, hiddenStates, tabContents);
+            fallbackPrintPDF(container, content, btn, orig);
         });
     } else {
-        fallbackPrint(wasCollapsed, hiddenStates, tabContents);
+        fallbackPrintPDF(container, content, btn, orig);
     }
 }
 
-function fallbackPrint(wasCollapsed, hiddenStates, tabContents) {
-    var msg = document.createElement('div');
-    msg.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-accent text-white px-6 py-3 rounded-lg shadow-lg z-50 text-sm';
-    msg.textContent = 'Use Ctrl+P / Cmd+P then select "Save as PDF"';
-    document.body.appendChild(msg);
-    setTimeout(function() { msg.remove(); }, 3000);
-    window.print();
-    restorePrintState(wasCollapsed, hiddenStates, tabContents, null, null);
-}
+function buildPDFContent(report) {
+    var r = report;
+    var sc = r.scorecard || {};
+    var finalScore = sc.final_score || {};
+    var narrative = r.narrative || {};
+    var rec = narrative.recommendation || {};
 
-function restorePrintState(wasCollapsed, hiddenStates, tabContents, btn, orig) {
-    if (wasCollapsed) {
-        var panel = $('deliberationPanel');
-        panel.classList.add('collapsed');
-        panel.classList.remove('expanded');
+    var html = '';
+
+    // Header
+    html += '<div style="text-align:center; margin-bottom:20px; border-bottom:2px solid #7c3aed; padding-bottom:15px;">';
+    html += '<h1 style="font-size:22px; margin:0; color:#7c3aed;">Shadow Jury Report</h1>';
+    html += '<p style="font-size:14px; color:#666; margin:5px 0 0;">' + escapeHtml(r.project_name || 'Untitled') + '</p>';
+    html += '</div>';
+
+    // Score Summary
+    html += '<div style="margin-bottom:20px;">';
+    html += '<h2 style="font-size:16px; color:#333; border-bottom:1px solid #ddd; padding-bottom:5px;">Score Summary</h2>';
+    html += '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
+    html += '<tr><td style="padding:4px 8px; font-weight:bold;">Grade</td><td style="padding:4px 8px;">' + (finalScore.grade || '--') + '</td></tr>';
+    html += '<tr><td style="padding:4px 8px; font-weight:bold;">Total Score</td><td style="padding:4px 8px;">' + (finalScore.total || 0) + '/100</td></tr>';
+    html += '<tr><td style="padding:4px 8px; font-weight:bold;">Risk Level</td><td style="padding:4px 8px;">' + (finalScore.risk_level || '--') + '</td></tr>';
+    html += '<tr><td style="padding:4px 8px; font-weight:bold;">Competition Score</td><td style="padding:4px 8px;">' + (sc.competition_score || 0) + '/100</td></tr>';
+    html += '</table>';
+    html += '</div>';
+
+    // Executive Summary
+    if (narrative.executive_summary) {
+        html += '<div style="margin-bottom:20px;">';
+        html += '<h2 style="font-size:16px; color:#333; border-bottom:1px solid #ddd; padding-bottom:5px;">Executive Summary</h2>';
+        html += '<p style="font-size:13px; line-height:1.5;">' + escapeHtml(narrative.executive_summary) + '</p>';
+        html += '</div>';
     }
-    tabContents.forEach(function(tc, i) {
-        if (hiddenStates[i]) tc.classList.add('hidden');
+
+    // Criteria Scores
+    html += '<div style="margin-bottom:20px;">';
+    html += '<h2 style="font-size:16px; color:#333; border-bottom:1px solid #ddd; padding-bottom:5px;">Criteria Scores</h2>';
+    (sc.criteria || []).forEach(function(c) {
+        html += '<div style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; padding:10px;">';
+        html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">';
+        html += '<span style="font-size:13px; font-weight:bold;">' + escapeHtml(c.criterion) + ' (weight: ' + c.weight + ')</span>';
+        html += '<span style="font-size:14px; font-weight:bold; color:' + (c.score >= 60 ? '#22c55e' : c.score >= 40 ? '#eab308' : '#ef4444') + ';">' + c.score + '/100</span>';
+        html += '</div>';
+        // Score bar
+        var pct = Math.max(0, Math.min(100, c.score));
+        html += '<div style="background:#eee; height:6px; border-radius:3px; margin-bottom:5px;">';
+        html += '<div style="background:' + (c.score >= 60 ? '#22c55e' : c.score >= 40 ? '#eab308' : '#ef4444') + '; height:6px; border-radius:3px; width:' + pct + '%;"></div>';
+        html += '</div>';
+        html += '<p style="font-size:12px; color:#555; margin:2px 0;">' + escapeHtml(c.justification || '') + '</p>';
+        html += '<p style="font-size:11px; color:#999;">Confidence: ' + Math.round((c.confidence || 0) * 100) + '%</p>';
+        html += '</div>';
     });
+    html += '</div>';
+
+    // Weaknesses
+    if (sc.weaknesses && sc.weaknesses.length) {
+        html += '<div style="margin-bottom:20px;">';
+        html += '<h2 style="font-size:16px; color:#333; border-bottom:1px solid #ddd; padding-bottom:5px;">Weaknesses</h2>';
+        sc.weaknesses.forEach(function(w) {
+            var sevColor = w.severity === 'critical' ? '#ef4444' : w.severity === 'high' ? '#eab308' : '#999';
+            html += '<div style="margin-bottom:8px; border-left:3px solid ' + sevColor + '; padding:8px 12px; background:#f9f9f9; border-radius:0 4px 4px 0;">';
+            html += '<div style="font-size:11px; font-weight:bold; color:' + sevColor + '; text-transform:uppercase;">' + w.severity + '</div>';
+            html += '<div style="font-size:13px; font-weight:bold; margin:2px 0;">' + escapeHtml(w.category) + '</div>';
+            html += '<p style="font-size:12px; color:#555; margin:2px 0;">' + escapeHtml(w.description) + '</p>';
+            html += '<p style="font-size:11px; color:#7c3aed; margin:2px 0;">Suggestion: ' + escapeHtml(w.suggestion || '') + '</p>';
+            html += '</div>';
+        });
+        html += '</div>';
+    }
+
+    // Risk Reports
+    if (r.risk_reports && r.risk_reports.length) {
+        html += '<div style="margin-bottom:20px;">';
+        html += '<h2 style="font-size:16px; color:#333; border-bottom:1px solid #ddd; padding-bottom:5px;">Risk Reports</h2>';
+        r.risk_reports.forEach(function(risk) {
+            html += '<div style="margin-bottom:8px; border-left:3px solid #eab308; padding:8px 12px; background:#f9f9f9; border-radius:0 4px 4px 0;">';
+            html += '<div style="font-size:13px; font-weight:bold;">' + escapeHtml(risk.category) + ' (' + risk.severity + ')</div>';
+            html += '<p style="font-size:12px; color:#555;">' + escapeHtml(risk.description) + '</p>';
+            html += '<p style="font-size:11px; color:#7c3aed;">Recommendation: ' + escapeHtml(risk.recommendation || '') + '</p>';
+            html += '</div>';
+        });
+        html += '</div>';
+    }
+
+    // Suggestions
+    if (r.suggestions && r.suggestions.length) {
+        html += '<div style="margin-bottom:20px;">';
+        html += '<h2 style="font-size:16px; color:#333; border-bottom:1px solid #ddd; padding-bottom:5px;">Suggestions</h2>';
+        html += '<ul style="font-size:12px; line-height:1.6;">';
+        r.suggestions.forEach(function(s) {
+            html += '<li>' + escapeHtml(s) + '</li>';
+        });
+        html += '</ul>';
+        html += '</div>';
+    }
+
+    // Agent Deliberation / Thinking
+    html += '<div style="margin-bottom:20px;">';
+    html += '<h2 style="font-size:16px; color:#333; border-bottom:2px solid #7c3aed; padding-bottom:5px;">Agent Deliberation & Thinking</h2>';
+    html += '<p style="font-size:11px; color:#999; margin-bottom:10px;">Full reasoning from every agent in the Shadow Jury panel</p>';
+
+    // Extract agent cards from DOM
+    var agentCards = document.querySelectorAll('.agent-card');
+    if (agentCards.length > 0) {
+        agentCards.forEach(function(card) {
+            var nameEl = card.querySelector('.text-sm.font-medium');
+            var layerEl = card.querySelector('.text-xs.px-1\\.5');
+            var resultEl = card.querySelector('.agent-result');
+            var reasoningEl = card.querySelector('[id^="reasoning-"]');
+            var descEl = card.querySelector('.agent-desc');
+
+            var agentName = nameEl ? nameEl.textContent.trim() : 'Unknown Agent';
+            var layerName = layerEl ? layerEl.textContent.trim() : '';
+            var desc = descEl ? descEl.textContent.trim() : '';
+
+            html += '<div style="margin-bottom:12px; border:1px solid #e0e0e0; border-radius:6px; padding:10px;">';
+            html += '<div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;">';
+            html += '<span style="font-size:14px; font-weight:bold; color:#7c3aed;">' + escapeHtml(agentName) + '</span>';
+            if (layerName) html += '<span style="font-size:10px; background:#f0f0f0; padding:2px 6px; border-radius:3px; color:#666;">' + escapeHtml(layerName) + '</span>';
+            html += '</div>';
+            if (desc) html += '<p style="font-size:12px; color:#555; margin:2px 0 5px;">' + escapeHtml(desc) + '</p>';
+
+            // Result summary
+            if (resultEl) {
+                var resultText = resultEl.textContent.trim();
+                if (resultText) {
+                    html += '<div style="font-size:11px; color:#333; margin-bottom:4px;">' + escapeHtml(resultText) + '</div>';
+                }
+            }
+
+            // Full reasoning
+            if (reasoningEl) {
+                var reasoningItems = reasoningEl.querySelectorAll('.thinking-item');
+                if (reasoningItems.length > 0) {
+                    reasoningItems.forEach(function(item) {
+                        var labelEl = item.querySelector('.text-gray-400');
+                        var textEl = item.querySelector('.text-gray-300');
+                        var label = labelEl ? labelEl.textContent.trim() : '';
+                        var text = textEl ? textEl.textContent.trim() : '';
+                        if (label && text) {
+                            html += '<div style="margin:4px 0 0 8px; border-left:2px solid #7c3aed; padding-left:8px;">';
+                            html += '<div style="font-size:10px; font-weight:bold; color:#7c3aed; text-transform:uppercase;">' + escapeHtml(label) + '</div>';
+                            html += '<div style="font-size:11px; color:#444; white-space:pre-wrap;">' + escapeHtml(text) + '</div>';
+                            html += '</div>';
+                        }
+                    });
+                }
+            }
+            html += '</div>';
+        });
+    } else {
+        html += '<p style="font-size:12px; color:#999; font-style:italic;">Deliberation data not available in this export mode. Run a project first to see agent thinking.</p>';
+    }
+    html += '</div>';
+
+    // Verdict
+    if (rec.verdict) {
+        html += '<div style="margin-bottom:20px; border:2px solid #7c3aed; border-radius:8px; padding:12px; text-align:center;">';
+        html += '<h2 style="font-size:14px; color:#7c3aed; margin:0 0 5px;">Verdict</h2>';
+        html += '<p style="font-size:16px; font-weight:bold; color:' + (rec.verdict.includes('Advance') ? '#22c55e' : '#ef4444') + ';">' + escapeHtml(rec.verdict) + '</p>';
+        html += '<p style="font-size:11px; color:#999;">Confidence: ' + Math.round((rec.confidence || 0) * 100) + '%</p>';
+        if (rec.key_action_items && rec.key_action_items.length) {
+            html += '<div style="text-align:left; margin-top:8px;">';
+            html += '<div style="font-size:11px; font-weight:bold; color:#333;">Key Actions:</div>';
+            rec.key_action_items.forEach(function(action, i) {
+                html += '<div style="font-size:11px; color:#555; margin:2px 0;">' + (i+1) + '. ' + escapeHtml(action) + '</div>';
+            });
+            html += '</div>';
+        }
+        html += '</div>';
+    }
+
+    // Execution Summary
+    if (r.execution_summary) {
+        html += '<div style="margin-top:20px; border-top:1px solid #ddd; padding-top:10px;">';
+        html += '<p style="font-size:11px; color:#999; font-style:italic;">' + escapeHtml(r.execution_summary) + '</p>';
+        html += '</div>';
+    }
+
+    // Footer
+    html += '<div style="text-align:center; margin-top:30px; border-top:1px solid #eee; padding-top:10px;">';
+    html += '<p style="font-size:10px; color:#bbb;">Generated by Shadow Jury — ' + formatDate() + '</p>';
+    html += '</div>';
+
+    return html;
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function cleanupPDF(container, content, btn, orig) {
+    content.innerHTML = '';
+    container.style.display = 'none';
     if (btn && orig) {
         btn.innerHTML = orig;
         btn.disabled = false;
     }
+}
+
+function fallbackPrintPDF(container, content, btn, orig) {
+    // Show a quick-use print version
+    container.style.display = 'block';
+    container.style.position = 'fixed';
+    container.style.top = '0';
+    container.style.left = '0';
+    container.style.width = '100%';
+    container.style.height = '100%';
+    container.style.zIndex = '9999';
+    container.style.overflow = 'auto';
+    container.style.display = 'block';
+    var msg = document.createElement('div');
+    msg.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#7c3aed;color:#fff;padding:10px 20px;border-radius:8px;z-index:10000;font-size:14px;';
+    msg.textContent = 'Press Ctrl+P / Cmd+P then select "Save as PDF"';
+    document.body.appendChild(msg);
+    setTimeout(function() {
+        window.print();
+        msg.remove();
+        cleanupPDF(container, content, btn, orig);
+    }, 500);
 }
