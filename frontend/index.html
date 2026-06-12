@@ -48,6 +48,24 @@
         pre { white-space: pre-wrap; word-break: break-word; }
         #deliberationPanel.collapsed #deliberationBody { display: none; }
         #deliberationPanel.expanded #deliberationBody { display: block; }
+        .thinking-item { border-left: 2px solid rgba(124, 58, 237, 0.3); padding-left: 10px; margin-bottom: 8px; }
+        .reasoning-block { border-top: 1px solid rgba(124, 58, 237, 0.1); padding-top: 8px; }
+        @media print {
+            body { background: #fff !important; color: #000 !important; }
+            nav, footer, #uploadArea, #analyzeBtn, button, .tab-btn { display: none !important; }
+            .glass { background: #fff !important; border: 1px solid #ddd !important; backdrop-filter: none !important; }
+            .criterion-card { break-inside: avoid; }
+            .gradient-text { -webkit-text-fill-color: #333 !important; }
+            .tab-content { display: block !important; }
+            #deliberationPanel { display: block !important; }
+            #deliberationBody { display: block !important; }
+            #deliberationPanel.collapsed #deliberationBody { display: block !important; }
+            .reasoning-block { display: block !important; }
+            .thinking-spinner, .fa-spinner { display: none !important; }
+            .agent-result .fa-chevron-down, .agent-result .fa-chevron-up { display: none !important; }
+            button[id^="toggle-"] { display: none !important; }
+            .hidden { display: block !important; }
+        }
     </style>
 </head>
 <body>
@@ -60,7 +78,8 @@
                 <span class="text-xs text-gray-500 hidden sm:inline">| Hackathon Project Evaluator</span>
             </div>
             <div class="flex items-center gap-4">
-                <span id="statusBadge" class="text-xs px-2 py-1 rounded-full bg-gray-800 text-gray-400">Ready</span>
+                    <span id="statusBadge" class="text-xs px-2 py-1 rounded-full bg-gray-800 text-gray-400">Ready</span>
+                    <span id="aiModeBadge" class="text-xs px-2 py-1 rounded-full hidden"><i class="fas fa-microchip mr-1"></i><span id="aiModeText"></span></span>
                 <button onclick="document.getElementById('uploadArea').scrollIntoView({behavior:'smooth'})" class="text-xs text-accent-light hover:text-white transition-colors"><i class="fas fa-upload mr-1"></i>Upload</button>
                 <button id="themeToggle" class="text-gray-400 hover:text-white transition-colors text-sm"><i class="fas fa-moon"></i></button>
             </div>

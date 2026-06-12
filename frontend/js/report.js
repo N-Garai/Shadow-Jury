@@ -1,4 +1,4 @@
-let currentReport = null;
+var currentReport = null;
 
 function displayReport(report) {
     currentReport = report;
@@ -9,13 +9,13 @@ function displayReport(report) {
     $('reportGrade').textContent = 'Grade: ' + report.scorecard.final_score.grade + ' | Risk: ' + report.scorecard.final_score.risk_level + ' | ' + formatDate();
     $('reportSummary').textContent = report.narrative?.executive_summary || 'No summary available.';
 
-    const scoreCircle = $('scoreCircle');
-    const total = report.scorecard.final_score.total;
+    var scoreCircle = $('scoreCircle');
+    var total = report.scorecard.final_score.total;
     scoreCircle.textContent = total;
     scoreCircle.className = 'w-20 h-20 rounded-full border-4 flex items-center justify-center text-2xl font-bold ' + scoreColor(total);
-    const borderColors = { 'text-neon-green': 'border-neon-green', 'text-neon-yellow': 'border-neon-yellow', 'text-neon-red': 'border-neon-red' };
-    for (const [cls, border] of Object.entries(borderColors)) {
-        if (scoreCircle.classList.contains(cls)) { scoreCircle.classList.add(border); break; }
+    var borderColors = { 'text-neon-green': 'border-neon-green', 'text-neon-yellow': 'border-neon-yellow', 'text-neon-red': 'border-neon-red' };
+    for (var key in borderColors) {
+        if (scoreCircle.classList.contains(key)) { scoreCircle.classList.add(borderColors[key]); break; }
     }
 
     renderCriteria(report.scorecard.criteria || []);
@@ -27,16 +27,15 @@ function displayReport(report) {
 }
 
 function renderCriteria(criteria) {
-    const container = $('criteriaList');
+    var container = $('criteriaList');
     container.innerHTML = criteria.map(function(c) {
-        const barColor = scoreBarColor(c.score);
-        return '<div class="glass rounded-lg p-4 animate-slide-up">' +
+        return '<div class="glass rounded-lg p-4 animate-slide-up criterion-card">' +
             '<div class="flex justify-between items-center mb-2">' +
                 '<div><span class="text-sm font-medium">' + c.criterion + '</span><span class="text-xs text-gray-500 ml-2">(weight: ' + c.weight + ')</span></div>' +
                 '<span class="text-sm font-bold ' + scoreColor(c.score) + '">' + c.score + '/100</span>' +
             '</div>' +
             '<div class="w-full bg-gray-800 rounded-full h-1.5 mb-2">' +
-                '<div class="score-bar ' + barColor + ' h-1.5 rounded-full" style="width:' + c.score + '%"></div>' +
+                '<div class="score-bar ' + scoreBarColor(c.score) + ' h-1.5 rounded-full" style="width:' + c.score + '%"></div>' +
             '</div>' +
             '<p class="text-xs text-gray-400">' + (c.justification || 'No justification') + '</p>' +
             '<p class="text-xs text-gray-600 mt-1">Confidence: ' + Math.round(c.confidence * 100) + '%</p>' +
@@ -45,17 +44,17 @@ function renderCriteria(criteria) {
 }
 
 function renderWeaknesses(weaknesses) {
-    const container = $('tabContentWeaknesses');
+    var container = $('tabContentWeaknesses');
     if (!weaknesses.length) {
         container.innerHTML = '<div class="text-gray-500 text-sm">No weaknesses identified.</div>';
         return;
     }
     container.innerHTML = weaknesses.map(function(w) {
-        var borderColor = w.severity === 'critical' ? 'border-neon-red' : w.severity === 'high' ? 'border-neon-yellow' : 'border-gray-600';
-        var severityColor = w.severity === 'critical' ? 'text-neon-red' : w.severity === 'high' ? 'text-neon-yellow' : 'text-gray-400';
-        return '<div class="glass rounded-lg p-4 border-l-4 ' + borderColor + ' animate-slide-up">' +
+        var border = w.severity === 'critical' ? 'border-neon-red' : w.severity === 'high' ? 'border-neon-yellow' : 'border-gray-600';
+        var sc = w.severity === 'critical' ? 'text-neon-red' : w.severity === 'high' ? 'text-neon-yellow' : 'text-gray-400';
+        return '<div class="glass rounded-lg p-4 border-l-4 ' + border + ' animate-slide-up">' +
             '<div class="flex items-center gap-2 mb-1">' +
-                '<span class="text-xs font-bold uppercase ' + severityColor + '">' + w.severity + '</span>' +
+                '<span class="text-xs font-bold uppercase ' + sc + '">' + w.severity + '</span>' +
                 '<span class="text-sm font-medium">' + w.category + '</span>' +
             '</div>' +
             '<p class="text-xs text-gray-300">' + w.description + '</p>' +
@@ -65,15 +64,17 @@ function renderWeaknesses(weaknesses) {
 }
 
 function renderRisks(risks) {
-    const container = $('tabContentRisks');
+    var container = $('tabContentRisks');
     if (!risks.length) {
         container.innerHTML = '<div class="text-gray-500 text-sm">No risks identified.</div>';
         return;
     }
     container.innerHTML = risks.map(function(r) {
-        return '<div class="glass rounded-lg p-4 border-l-4 ' + (r.severity === 'critical' ? 'border-neon-red' : 'border-neon-yellow') + ' animate-slide-up">' +
+        var border = r.severity === 'critical' ? 'border-neon-red' : 'border-neon-yellow';
+        var sc = r.severity === 'critical' ? 'text-neon-red' : 'text-neon-yellow';
+        return '<div class="glass rounded-lg p-4 border-l-4 ' + border + ' animate-slide-up">' +
             '<div class="flex items-center gap-2 mb-1">' +
-                '<span class="text-xs font-bold uppercase ' + (r.severity === 'critical' ? 'text-neon-red' : 'text-neon-yellow') + '">' + r.severity + '</span>' +
+                '<span class="text-xs font-bold uppercase ' + sc + '">' + r.severity + '</span>' +
                 '<span class="text-sm font-medium">' + r.category + '</span>' +
             '</div>' +
             '<p class="text-xs text-gray-300">' + r.description + '</p>' +
@@ -83,7 +84,7 @@ function renderRisks(risks) {
 }
 
 function renderSuggestions(suggestions) {
-    const container = $('tabContentSuggestions');
+    var container = $('tabContentSuggestions');
     if (!suggestions.length) {
         container.innerHTML = '<div class="text-gray-500 text-sm">No suggestions available.</div>';
         return;
@@ -119,32 +120,77 @@ function copyReport() {
     if (!currentReport) return;
     navigator.clipboard.writeText(JSON.stringify(currentReport, null, 2))
         .then(function() {
-            var btn = event.target;
-            btn.textContent = 'Copied!';
-            setTimeout(function() { btn.innerHTML = '<i class="fas fa-copy mr-1"></i> Copy to Clipboard'; }, 2000);
+            var el = $('copyBtn') || event.target;
+            el.textContent = 'Copied!';
+            setTimeout(function() { el.innerHTML = '<i class="fas fa-copy mr-1"></i> Copy to Clipboard'; }, 2000);
         })
         .catch(function() { alert('Failed to copy to clipboard'); });
 }
 
 function exportPDF() {
-    if (!currentReport) return;
+    // Temporarily expand all deliberation content and show all tabs
+    var panel = $('deliberationPanel');
+    var wasCollapsed = panel.classList.contains('collapsed');
+    if (wasCollapsed) {
+        panel.classList.remove('collapsed');
+        panel.classList.add('expanded');
+    }
 
-    var element = document.getElementById('reportSection');
-    var opt = {
-        margin:       0.5,
-        filename:     'shadow-jury-report-' + Date.now() + '.pdf',
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-    };
-
-    var btn = event.target;
-    var originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Generating PDF...';
-    btn.disabled = true;
-
-    html2pdf().set(opt).from(element).save().then(function() {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
+    // Show all tab contents for print capture
+    var tabContents = document.querySelectorAll('.tab-content');
+    var tabBtns = document.querySelectorAll('.tab-btn');
+    var hiddenStates = [];
+    tabContents.forEach(function(tc) {
+        hiddenStates.push(tc.classList.contains('hidden'));
+        tc.classList.remove('hidden');
     });
+
+    if (typeof html2pdf !== 'undefined') {
+        var opt = {
+            margin:       0.4,
+            filename:     'shadow-jury-report-' + Date.now() + '.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, logging: false, letterRendering: true },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+
+        var btn = event && event.target ? event.target : $('exportBtn');
+        var orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Generating...';
+        btn.disabled = true;
+
+        html2pdf().set(opt).from(document.body).save().then(function() {
+            restorePrintState(wasCollapsed, hiddenStates, tabContents, btn, orig);
+        }).catch(function() {
+            // Fallback to window.print
+            fallbackPrint(wasCollapsed, hiddenStates, tabContents);
+        });
+    } else {
+        fallbackPrint(wasCollapsed, hiddenStates, tabContents);
+    }
+}
+
+function fallbackPrint(wasCollapsed, hiddenStates, tabContents) {
+    var msg = document.createElement('div');
+    msg.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-accent text-white px-6 py-3 rounded-lg shadow-lg z-50 text-sm';
+    msg.textContent = 'Use Ctrl+P / Cmd+P then select "Save as PDF"';
+    document.body.appendChild(msg);
+    setTimeout(function() { msg.remove(); }, 3000);
+    window.print();
+    restorePrintState(wasCollapsed, hiddenStates, tabContents, null, null);
+}
+
+function restorePrintState(wasCollapsed, hiddenStates, tabContents, btn, orig) {
+    if (wasCollapsed) {
+        var panel = $('deliberationPanel');
+        panel.classList.add('collapsed');
+        panel.classList.remove('expanded');
+    }
+    tabContents.forEach(function(tc, i) {
+        if (hiddenStates[i]) tc.classList.add('hidden');
+    });
+    if (btn && orig) {
+        btn.innerHTML = orig;
+        btn.disabled = false;
+    }
 }
