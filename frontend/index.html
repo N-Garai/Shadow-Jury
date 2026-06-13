@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700;1,800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <script>
         tailwind.config = {
@@ -47,6 +48,101 @@
     <div class="light-sweep"></div>
     <div class="noise-overlay"></div>
 
+    <!-- Floating 3D geometric shapes -->
+    <div class="floating-shape shape-hex" style="--x:5%; --y:15%; --s:45px; --d:7s; --o:0.6;"></div>
+    <div class="floating-shape shape-circle" style="--x:88%; --y:25%; --s:30px; --d:9s; --o:0.4;"></div>
+    <div class="floating-shape shape-diamond" style="--x:15%; --y:70%; --s:35px; --d:6s; --o:0.5;"></div>
+    <div class="floating-shape shape-hex" style="--x:75%; --y:80%; --s:25px; --d:11s; --o:0.3;"></div>
+    <div class="floating-shape shape-circle" style="--x:50%; --y:10%; --s:20px; --d:8s; --o:0.35;"></div>
+    <div class="floating-shape shape-diamond" style="--x:92%; --y:55%; --s:40px; --d:5s; --o:0.45;"></div>
+
+    <!-- Main neural nodes (13 agents) — float above all content -->
+    <!-- LEFT CLUSTER -->
+    <div class="agent-node" data-agent="File Reader" data-desc="Reads uploaded project files and extracts key content for analysis" style="--nx:32%; --ny:28%; --nc:#c084fc;">
+        <div class="agent-info-popup"><span class="info-icon">i</span><div><strong>File Reader</strong><small>Reads uploaded project files</small></div></div>
+    </div>
+    <div class="agent-node" data-agent="Code Judge" data-desc="Scores code structure, readability, best practices, and maintainability" style="--nx:35%; --ny:42%; --nc:#60a5fa;">
+        <div class="agent-info-popup"><span class="info-icon">i</span><div><strong>Code Judge</strong><small>Scores code quality</small></div></div>
+    </div>
+    <div class="agent-node" data-agent="Security Judge" data-desc="Checks for vulnerabilities, auth issues, and security best practices" style="--nx:25%; --ny:55%; --nc:#a78bfa;">
+        <div class="agent-info-popup"><span class="info-icon">i</span><div><strong>Security</strong><small>Checks vulnerabilities</small></div></div>
+    </div>
+    <div class="agent-node" data-agent="Code Critic" data-desc="Stress-tests code scores, finds hidden debt and anti-patterns" style="--nx:30%; --ny:70%; --nc:#fb923c;">
+        <div class="agent-info-popup"><span class="info-icon">i</span><div><strong>Code Critic</strong><small>Finds anti-patterns</small></div></div>
+    </div>
+    <div class="agent-node" data-agent="Synthesis" data-desc="Merges all judge scores and critic feedback into a unified assessment" style="--nx:28%; --ny:84%; --nc:#c084fc;">
+        <div class="agent-info-popup"><span class="info-icon">i</span><div><strong>Synthesis</strong><small>Merges all assessments</small></div></div>
+    </div>
+
+    <!-- RIGHT CLUSTER -->
+    <div class="agent-node" data-agent="GitHub Fetch" data-desc="Clones and parses GitHub repositories via API (up to 5 files)" style="--nx:68%; --ny:28%; --nc:#22c55e;">
+        <div class="agent-info-popup"><span class="info-icon">i</span><div><strong>GitHub Fetch</strong><small>Fetches repos via API</small></div></div>
+    </div>
+    <div class="agent-node" data-agent="UX Judge" data-desc="Evaluates UI/UX, accessibility, responsiveness, and user experience" style="--nx:65%; --ny:42%; --nc:#f472b6;">
+        <div class="agent-info-popup"><span class="info-icon">i</span><div><strong>UX Judge</strong><small>Evaluates UX</small></div></div>
+    </div>
+    <div class="agent-node" data-agent="Feasibility" data-desc="Evaluates technical feasibility, scalability, and deployment readiness" style="--nx:75%; --ny:55%; --nc:#34d399;">
+        <div class="agent-info-popup"><span class="info-icon">i</span><div><strong>Feasibility</strong><small>Evaluates deployability</small></div></div>
+    </div>
+    <div class="agent-node" data-agent="UX Critic" data-desc="Challenges UX scores, identifies accessibility gaps and usability flaws" style="--nx:65%; --ny:70%; --nc:#818cf8;">
+        <div class="agent-info-popup"><span class="info-icon">i</span><div><strong>UX Critic</strong><small>Identifies UX flaws</small></div></div>
+    </div>
+    <div class="agent-node" data-agent="Report Gen" data-desc="Generates final report with scores, weaknesses, risks, and suggestions" style="--nx:72%; --ny:84%; --nc:#22c55e;">
+        <div class="agent-info-popup"><span class="info-icon">i</span><div><strong>Report Gen</strong><small>Generates final report</small></div></div>
+    </div>
+
+    <!-- CENTER -->
+    <div class="agent-node" data-agent="Innovation" data-desc="Assesses novelty, creativity, and problem-solving approach (central hub)" style="--nx:50%; --ny:38%; --nc:#eab308;">
+        <div class="agent-info-popup"><span class="info-icon">i</span><div><strong>Innovation</strong><small>Assesses creativity</small></div></div>
+    </div>
+    <div class="agent-node" data-agent="Security Critic" data-desc="Probes security scores for overlooked attack vectors and edge cases" style="--nx:50%; --ny:55%; --nc:#f87171;">
+        <div class="agent-info-popup"><span class="info-icon">i</span><div><strong>Security Critic</strong><small>Probes security gaps</small></div></div>
+    </div>
+    <div class="agent-node" data-agent="Delta Analyst" data-desc="Compares original vs rewritten project, computes improvement delta" style="--nx:50%; --ny:84%; --nc:#60a5fa;">
+        <div class="agent-info-popup"><span class="info-icon">i</span><div><strong>Delta Analyst</strong><small>Computes improvements</small></div></div>
+    </div>
+
+    <!-- Agent connection lines (above content, z-index 9999) -->
+    <svg id="agentLines" class="agent-lines-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+
+    <!-- Satellite dots (behind content, z-index 0) -->
+    <div class="agent-network">
+        <div class="synapse-node" style="--sx:22%; --sy:22%; --sc:#c084fc; --sd:0s;"></div>
+        <div class="synapse-node" style="--sx:18%; --sy:35%; --sc:#60a5fa; --sd:0.6s;"></div>
+        <div class="synapse-node" style="--sx:16%; --sy:48%; --sc:#a78bfa; --sd:1.5s;"></div>
+        <div class="synapse-node" style="--sx:12%; --sy:62%; --sc:#fb923c; --sd:2.1s;"></div>
+        <div class="synapse-node" style="--sx:20%; --sy:78%; --sc:#c084fc; --sd:2.7s;"></div>
+        <div class="synapse-node" style="--sx:78%; --sy:22%; --sc:#22c55e; --sd:0.2s;"></div>
+        <div class="synapse-node" style="--sx:82%; --sy:35%; --sc:#f472b6; --sd:0.8s;"></div>
+        <div class="synapse-node" style="--sx:84%; --sy:48%; --sc:#34d399; --sd:1.7s;"></div>
+        <div class="synapse-node" style="--sx:88%; --sy:62%; --sc:#818cf8; --sd:2.3s;"></div>
+        <div class="synapse-node" style="--sx:80%; --sy:78%; --sc:#22c55e; --sd:2.9s;"></div>
+        <div class="synapse-node" style="--sx:50%; --sy:15%; --sc:#eab308; --sd:3.5s;"></div>
+        <div class="synapse-node" style="--sx:50%; --sy:92%; --sc:#60a5fa; --sd:4s;"></div>
+    </div>
+
+    <!-- Corner HUD brackets -->
+    <div class="corner-hud corner-hud-tl"></div>
+    <div class="corner-hud corner-hud-tr"></div>
+    <div class="corner-hud corner-hud-bl"></div>
+    <div class="corner-hud corner-hud-br"></div>
+
+    <!-- Agent thinking halo (background) -->
+    <div class="agent-thinking-halo"></div>
+
+    <!-- Particle network canvas (low opacity background) -->
+    <canvas id="particleNetwork"></canvas>
+
+    <!-- Floating jury agent labels -->
+    <div class="juror-label" style="--jx:8%; --jy:25%; --jr:-8deg; --jd:19s; --jo:0.25;">Quality Judge</div>
+    <div class="juror-label" style="--jx:85%; --jy:40%; --jr:12deg; --jd:23s; --jo:0.2;">Code Critic</div>
+    <div class="juror-label" style="--jx:12%; --jy:72%; --jr:-14deg; --jd:17s; --jo:0.3;">UX Expert</div>
+    <div class="juror-label" style="--jx:90%; --jy:15%; --jr:6deg; --jd:21s; --jo:0.2;">Security Judge</div>
+    <div class="juror-label" style="--jx:5%; --jy:50%; --jr:-5deg; --jd:25s; --jo:0.15;">Innovation</div>
+    <div class="juror-label" style="--jx:78%; --jy:75%; --jr:-10deg; --jd:16s; --jo:0.25;">Feasibility</div>
+    <div class="juror-label" style="--jx:50%; --jy:88%; --jr:4deg; --jd:20s; --jo:0.2;">Syntax Judge</div>
+    <div class="juror-label" style="--jx:45%; --jy:5%; --jr:-3deg; --jd:22s; --jo:0.15;">Ethics</div>
+
     <div class="min-h-screen flex flex-col relative z-[1]">
         <!-- Navbar -->
         <nav class="glass border-b px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between sticky top-0 z-50" style="border-color:var(--border-glass)">
@@ -65,35 +161,40 @@
         </nav>
 
         <main class="flex-1 max-w-6xl mx-auto w-full px-3 sm:px-4 pt-14">
-            <!-- Hero – sticky scrollytelling -->
-            <section id="heroSticky" class="hero-sticky">
-                <div class="hero-inner w-full max-w-4xl mx-auto px-2">
-                    <div class="verdict-stack hidden xl:block" style="top:50%; left:-80px; transform:translateY(-50%);">
+            <!-- Hero Zone – wraps sticky hero + triggers, collapses entirely on exit -->
+            <div id="heroZone">
+                <section id="heroSticky" class="hero-sticky">
+                    <div class="verdict-stack left">
                         <div class="verdict-card" style="--card-tf:rotateY(-6deg) rotateX(4deg) translateZ(10px);"><i class="fas fa-check-circle" style="color:#22c55e;"></i> Score: 82</div>
                         <div class="verdict-card" style="--card-tf:rotateY(-3deg) rotateX(2deg) translateZ(0px);"><i class="fas fa-exclamation-triangle" style="color:#eab308;"></i> 3 Issues</div>
                         <div class="verdict-card" style="--card-tf:rotateY(0deg) rotateX(0deg) translateZ(-10px);"><i class="fas fa-gavel"></i> Verdict</div>
                     </div>
-                    <div class="verdict-stack hidden xl:block" style="top:50%; right:-80px; transform:translateY(-50%);">
+                    <div class="verdict-stack right">
                         <div class="verdict-card" style="--card-tf:rotateY(6deg) rotateX(-4deg) translateZ(10px);"><i class="fas fa-star" style="color:#a78bfa;"></i> Grade: A</div>
                         <div class="verdict-card" style="--card-tf:rotateY(3deg) rotateX(-2deg) translateZ(0px);"><i class="fas fa-lightbulb" style="color:#a78bfa;"></i> 5 Fixes</div>
                         <div class="verdict-card" style="--card-tf:rotateY(0deg) rotateX(0deg) translateZ(-10px);"><i class="fas fa-arrow-right"></i> Improve</div>
                     </div>
-                    <div style="font-family:'Sora',system-ui,sans-serif;">
-                        <h1 class="hero-title text-3xl sm:text-4xl md:text-5xl font-bold leading-tight">
+                <div class="hero-inner w-full max-w-5xl mx-auto px-2 text-center">
+                    <div style="font-family:'Playfair Display','Sora',Georgia,serif;">
+                        <h1 class="hero-title text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-snug md:leading-tight">
                             <span class="hero-line">
                                 <span class="hero-reveal" data-step="1">
-                                    <span class="hero-word">Judge</span> <span class="hero-word">Your</span> <span class="hero-word gradient-text">Hackathon</span>
+                                    <span class="hero-word" style="color:#c084fc;">Judge</span>
+                                    <span class="hero-word" style="color:#22c55e;">Your</span>
+                                    <span class="hero-word" style="color:#60a5fa;">Hackathon</span>
                                 </span>
                             </span>
                             <span class="hero-line">
                                 <span class="hero-reveal" data-step="2">
-                                    <span class="hero-word">Project</span> <span class="hero-word">in</span> <span class="hero-word">Seconds</span>
+                                    <span class="hero-word" style="color:#f472b6;">Project</span>
+                                    <span class="hero-word" style="color:#eab308;">in</span>
+                                    <span class="hero-word" style="color:#a78bfa;">Seconds</span>
                                 </span>
                             </span>
                         </h1>
                     </div>
-                    <p class="hero-reveal hero-subtitle text-sm sm:text-base max-w-xl mx-auto leading-relaxed mt-4 sm:mt-5" data-step="3" style="color:var(--text-muted);">Upload files, paste a README, or link a GitHub repo. <strong style="color:var(--text-primary);">13 agents</strong> score, critique, and improve your submission.</p>
-                    <div class="hero-reveal trust-bar mt-6" data-step="4">
+                    <p class="hero-reveal hero-subtitle text-sm sm:text-base max-w-2xl mx-auto leading-relaxed mt-4 sm:mt-6" data-step="3" style="color:var(--text-muted);">Upload files, paste a README, or link a GitHub repo. <strong style="color:var(--text-primary);">13 agents</strong> score, critique, and improve your submission.</p>
+                    <div class="hero-reveal trust-bar mt-6 sm:mt-8" data-step="4">
                         <span class="trust-item"><i class="fas fa-balance-scale"></i> Reasoning</span>
                         <span class="trust-item"><i class="fas fa-file-alt"></i> Evidence</span>
                         <span class="trust-item"><i class="fas fa-gavel"></i> Verdict</span>
@@ -102,18 +203,88 @@
                 </div>
             </section>
 
-            <!-- Scroll triggers – invisible spacers that pace the reveal -->
-            <div class="scroll-trigger" data-step="1"></div>
-            <div class="scroll-trigger" data-step="2"></div>
-            <div class="scroll-trigger" data-step="3"></div>
-            <div class="scroll-trigger" data-step="4"></div>
+            <!-- Agent name popups in hero -->
+            <div class="agent-popup" style="--ax:8%; --ay:20%; --adelay:0s; --ac:#c084fc;">File Reader</div>
+            <div class="agent-popup" style="--ax:78%; --ay:15%; --adelay:2.5s; --ac:#22c55e;">GitHub Fetch</div>
+            <div class="agent-popup" style="--ax:15%; --ay:65%; --adelay:5s; --ac:#60a5fa;">Code Judge</div>
+            <div class="agent-popup" style="--ax:82%; --ay:55%; --adelay:7.5s; --ac:#f472b6;">UX Expert</div>
+            <div class="agent-popup" style="--ax:5%; --ay:85%; --adelay:10s; --ac:#eab308;">Innovation</div>
+            <div class="agent-popup" style="--ax:90%; --ay:78%; --adelay:3.5s; --ac:#a78bfa;">Security</div>
+            <div class="agent-popup" style="--ax:50%; --ay:10%; --adelay:6s; --ac:#22c55e;">Feasibility</div>
+            <div class="agent-popup" style="--ax:45%; --ay:88%; --adelay:8.5s; --ac:#c084fc;">Critic</div>
+            <div class="agent-popup" style="--ax:70%; --ay:38%; --adelay:1.5s; --ac:#60a5fa;">Synthesis</div>
+            <div class="agent-popup" style="--ax:30%; --ay:45%; --adelay:4s; --ac:#f472b6;">Quality</div>
+
+                <!-- Scroll triggers – invisible spacers that pace the reveal -->
+                <div class="scroll-trigger" data-step="1"></div>
+                <div class="scroll-trigger" data-step="2"></div>
+                <div class="scroll-trigger" data-step="3"></div>
+                <div class="scroll-trigger" data-step="4"></div>
+                <div class="scroll-trigger" data-step="5"></div>
+            </div>
+
+            <!-- Agent Explainer Section (appears as hero fades) -->
+            <section id="agentExplainer" class="explainer-section">
+                <h2 class="text-lg sm:text-xl font-bold text-center mb-6 sm:mb-8 reveal-item" style="font-family:'Playfair Display',serif;">Meet Your <span style="color:#a78bfa;">Shadow Jury</span></h2>
+                <div class="max-w-4xl mx-auto space-y-4 sm:space-y-5">
+                    <div class="explainer-card-stagger" data-card="1">
+                        <div class="explainer-card">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="explainer-icon" style="background:rgba(192,132,252,0.15);color:#c084fc;"><i class="fas fa-file-import"></i></span>
+                                <div>
+                                    <h3 class="text-sm font-semibold">Layer 1: Intake</h3>
+                                    <p class="text-xs" style="color:var(--text-muted);">File Reader &amp; GitHub Fetcher</p>
+                                </div>
+                            </div>
+                            <p class="text-xs sm:text-sm leading-relaxed" style="color:var(--text-secondary);">Collects your project files, README, and GitHub repository. Prepares every line of code and documentation for the jury to analyze.</p>
+                        </div>
+                    </div>
+                    <div class="explainer-card-stagger" data-card="2">
+                        <div class="explainer-card">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="explainer-icon" style="background:rgba(34,197,94,0.15);color:#22c55e;"><i class="fas fa-gavel"></i></span>
+                                <div>
+                                    <h3 class="text-sm font-semibold">Layer 2: Judges</h3>
+                                    <p class="text-xs" style="color:var(--text-muted);">5 Specialized Evaluators</p>
+                                </div>
+                            </div>
+                            <p class="text-xs sm:text-sm leading-relaxed" style="color:var(--text-secondary);">Code Quality, UX/Design, Innovation, Security, and Feasibility judges each score your project from their unique perspective. Powered by GPT-4o-mini with rule-based fallback.</p>
+                        </div>
+                    </div>
+                    <div class="explainer-card-stagger" data-card="3">
+                        <div class="explainer-card">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="explainer-icon" style="background:rgba(96,165,250,0.15);color:#60a5fa;"><i class="fas fa-shield-alt"></i></span>
+                                <div>
+                                    <h3 class="text-sm font-semibold">Layer 3: Critics</h3>
+                                    <p class="text-xs" style="color:var(--text-muted);">3 Devil&rsquo;s Advocates</p>
+                                </div>
+                            </div>
+                            <p class="text-xs sm:text-sm leading-relaxed" style="color:var(--text-secondary);">Stress-tests every judge verdict. Identifies blind spots, hidden risks, and overlooked weaknesses. Ensures no biased score slips through.</p>
+                        </div>
+                    </div>
+                    <div class="explainer-card-stagger" data-card="4">
+                        <div class="explainer-card">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="explainer-icon" style="background:rgba(244,114,182,0.15);color:#f472b6;"><i class="fas fa-sync-alt"></i></span>
+                                <div>
+                                    <h3 class="text-sm font-semibold">Layer 4: Synthesis</h3>
+                                    <p class="text-xs" style="color:var(--text-muted);">3 Aggregators</p>
+                                </div>
+                            </div>
+                            <p class="text-xs sm:text-sm leading-relaxed" style="color:var(--text-secondary);">Merges all judge scores and critic feedback into a final report. Generates the verdict, improvement suggestions, and a rewritten project summary.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
             <!-- Upload Section -->
-            <section id="uploadArea" class="glass rounded-xl p-4 sm:p-6 reveal">
-                <h2 class="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2"><i class="fas fa-cloud-upload-alt text-accent-light"></i> Upload Materials</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <section id="uploadArea" class="upload-fullscreen glass rounded-xl p-4 sm:p-6 glass-tilt">
+                <div class="upload-inner w-full max-w-5xl mx-auto">
+                    <h2 class="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2 reveal-item"><i class="fas fa-cloud-upload-alt text-accent-light"></i> Upload Materials</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                     <!-- File Upload -->
-                    <div>
+                    <div class="reveal-item">
                         <label class="block text-xs sm:text-sm text-gray-400 mb-2"><i class="fas fa-file mr-1"></i> Files</label>
                         <div id="dropzone" class="dropzone rounded-lg p-4 sm:p-6 text-center cursor-pointer">
                             <i class="fas fa-file-upload text-xl sm:text-2xl text-gray-500 mb-2"></i>
@@ -125,13 +296,13 @@
                     </div>
 
                     <!-- Paste Text -->
-                    <div>
+                    <div class="reveal-item">
                         <label class="block text-xs sm:text-sm text-gray-400 mb-2"><i class="fas fa-paste mr-1"></i> Paste README / Description</label>
                         <textarea id="pasteText" rows="5" class="w-full rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm placeholder-gray-500 focus:border-accent focus:outline-none resize-none transition-colors" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary);" placeholder="Paste your project README, description, or any text here..."></textarea>
                     </div>
 
                     <!-- GitHub URL -->
-                    <div class="sm:col-span-2 lg:col-span-1">
+                    <div class="reveal-item sm:col-span-2 lg:col-span-1">
                         <label class="block text-xs sm:text-sm text-gray-400 mb-2"><i class="fab fa-github mr-1"></i> GitHub Repository</label>
                         <input id="githubUrl" type="url" class="w-full rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm placeholder-gray-500 focus:border-accent focus:outline-none transition-colors" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary);" placeholder="https://github.com/user/repo">
                         <p class="text-xs text-gray-500 mt-1">Public repos only (60 req/hr)</p>
@@ -139,22 +310,21 @@
                     </div>
                 </div>
 
-                <div class="mt-4 sm:mt-6 flex items-center gap-3 sm:gap-4 flex-wrap">
+                <div class="reveal-item mt-4 sm:mt-6 flex items-center gap-3 sm:gap-4 flex-wrap">
                     <button id="analyzeBtn" onclick="startAnalysis()" class="btn-glow px-5 sm:px-6 py-2.5 bg-accent hover:bg-accent/90 text-white rounded-lg font-medium transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-accent/10">
                         <i class="fas fa-gavel"></i> Start Shadow Jury
                     </button>
                     <button onclick="resetAll()" class="px-3.5 sm:px-4 py-2.5 border rounded-lg text-xs sm:text-sm transition-colors" style="border-color:var(--border-glass);color:var(--text-muted);"><i class="fas fa-redo mr-1"></i> Reset</button>
                     <div id="uploadSpinner" class="hidden"><i class="fas fa-spinner fa-spin text-accent-light"></i></div>
                 </div>
-                <div class="mt-3 flex items-center gap-2 flex-wrap">
+                <div class="reveal-item mt-3 flex items-center gap-2 flex-wrap">
                     <span class="text-[10px]" style="color:var(--text-muted);">Try a sample:</span>
                     <button onclick="loadSample('weak')" class="sample-btn"><i class="fas fa-file-code mr-1"></i>Weak project</button>
                     <button onclick="loadSample('medium')" class="sample-btn"><i class="fas fa-file-code mr-1"></i>Medium project</button>
                     <button onclick="loadSample('strong')" class="sample-btn"><i class="fas fa-file-code mr-1"></i>Strong project</button>
                 </div>
+                </div>
             </section>
-
-            <!-- Progress -->
             <section id="progressSection" class="hidden glass rounded-xl p-4 sm:p-6">
                 <div class="flex items-center justify-between mb-2 sm:mb-3">
                     <h2 class="text-sm sm:text-base font-semibold flex items-center gap-2"><i class="fas fa-spinner fa-spin text-accent-light"></i> <span id="progressTitle">Evaluating...</span></h2>
