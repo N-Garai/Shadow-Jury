@@ -44,6 +44,9 @@ function connectDeliberation(pipelineId) {
 
     agentCards = {};
     layerContainers = {};
+    _pendingCards = [];
+    if (_cardBatchTimer) clearTimeout(_cardBatchTimer);
+    _cardBatchTimer = null;
 
     var url = API_BASE + '/run/stream/' + pipelineId;
 
@@ -110,61 +113,6 @@ function toggleAgentReasoning(agentId) {
     }
 }
 
-function handleDeliberationEvent(event, container) {
-    var type = event.type, layer = event.layer, agent = event.agent;
-    var description = event.description || '', data = event.data || {};
-
-    if (type === 'pipeline_start') {
-        addSystemMessage(container, description);
-        // Show AI mode badge
-        var badge = $('aiModeBadge');
-        var text = $('aiModeText');
-        if (description.indexOf('GPT-4o-mini') > -1) {
-            badge.className = 'text-xs px-2 py-1 rounded-full bg-green-900 text-green-300';
-            text.textContent = 'GPT-4o-mini';
-        } else {
-            badge.className = 'text-xs px-2 py-1 rounded-full bg-yellow-900 text-yellow-300';
-            text.textContent = 'Rule-based (set GITHUB_TOKEN)';
-        }
-        badge.classList.remove('hidden');
-        return;
-    }
-    if (type === 'error') {
-        addSystemMessage(container, 'Error: ' + description, true);
-        return;
-    }
-    if (type === 'layer_start' || type === 'layer_done') {
-        handleLayerEvent(type, layer, description, container);
-        return;
-    }
-    if (type === 'pipeline_done') {
-        handleLayerEvent('layer_done', 4, description, container);
-        addSystemMessage(container, 'Complete: ' + description);
-        if (data && data.report) {
-            setTimeout(function() {
-                updateToggleLabel('Show Agent Deliberation', 'right');
-                collapseDeliberation();
-                displayReport(data.report);
-            }, 600);
-        }
-        return;
-    }
-    if (type === 'agent_start') {
-        addAgentCard(agent, layer, description, container);
-        return;
-    }
-    if (type === 'agent_result') {
-        updateAgentResult(agent, description, data);
-        return;
-    }
-}
-
-function collapseDeliberation() {
-    var panel = $('deliberationPanel');
-    panel.classList.add('collapsed');
-    panel.classList.remove('expanded');
-}
-
 function handleLayerEvent(type, layer, description, container) {
     var li = LAYER_ICONS[layer] || { icon: 'fa-circle', color: 'text-gray-400', bg: 'bg-gray-800', border: 'border-gray-600', label: 'Layer ' + layer };
 
@@ -189,8 +137,85 @@ function handleLayerEvent(type, layer, description, container) {
     }
 }
 
+function handleDeliberationEvent(event, container) {
+    var type = event.type, layer = event.layer, agent = event.agent;
+    var description = event.description || '', data = event.data || {};
+
+    if (type === 'pipeline_start') {
+        addSystemMessage(container, description);
+        var badge = $('aiModeBadge');
+        var text = $('aiModeText');
+        if (description.indexOf('GPT-4o-mini') > -1) {
+            badge.className = 'text-xs px-2 py-1 rounded-full bg-green-900 text-green-300';
+            text.textContent = 'GPT-4o-mini';
+        } else {
+            badge.className = 'text-xs px-2 py-1 rounded-full bg-yellow-900 text-yellow-300';
+            text.textContent = 'Rule-based (set GITHUB_TOKEN)';
+        }
+        badge.classList.remove('hidden');
+        return;
+    }
+    if (type === 'error') {
+        addSystemMessage(container, 'Error: ' + description, true);
+        return;
+    }
+    if (type === 'layer_start' || type === 'layer_done') {
+        handleLayerEvent(type, layer, description, container);
+        return;
+    }
+    if (type === 'pipeline_done') {
+        handleLayerEvent('layer_done', 4, description, container);
+        addSystemMessage(container, 'Complete: ' + description);
+        if (data && data.report) {
+            flushCardBatch();
+            setTimeout(function() {
+                updateToggleLabel('Show Agent Deliberation', 'right');
+                collapseDeliberation();
+                thawAnimations();
+                displayReport(data.report);
+            }, 600);
+        }
+        return;
+    }
+    if (type === 'agent_start') {
+        addAgentCard(agent, layer, description, container);
+        return;
+    }
+    if (type === 'agent_result') {
+        updateAgentResult(agent, description, data);
+        return;
+    }
+}
+
+function collapseDeliberation() {
+    var panel = $('deliberationPanel');
+    panel.classList.add('collapsed');
+    panel.classList.remove('expanded');
+}
+
+var _pendingCards = [];
+var _cardBatchTimer = null;
+
+function flushCardBatch() {
+    if (_pendingCards.length === 0) return;
+    var frag = document.createDocumentFragment();
+    var lastCard = null;
+    for (var i = 0; i < _pendingCards.length; i++) {
+        var item = _pendingCards[i];
+        var layerContainer = item.layerContainer;
+        var card = item.card;
+        layerContainer.appendChild(card);
+        agentCards[item.agent] = card;
+        lastCard = card;
+    }
+    _pendingCards = [];
+    if (lastCard) lastCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 function addAgentCard(agent, layer, description, container) {
     if (agentCards[agent]) return;
+
+    freezeAnimations();
 
     var layerContainer = layerContainers[layer] || container;
     var iconClass = AGENT_ICONS[agent] || 'fa-robot';
@@ -220,12 +245,17 @@ function addAgentCard(agent, layer, description, container) {
             '</div>' +
         '</div>';
 
-    layerContainer.appendChild(card);
-    agentCards[agent] = card;
-    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    _pendingCards.push({ card: card, agent: agent, layerContainer: layerContainer, layer: layer });
+
+    if (_cardBatchTimer) clearTimeout(_cardBatchTimer);
+    _cardBatchTimer = setTimeout(function() {
+        flushCardBatch();
+        if (!_pendingCards.length) thawAnimations();
+    }, 50);
 }
 
 function updateAgentResult(agent, description, data) {
+    if (_pendingCards.length) flushCardBatch();
     var card = agentCards[agent];
     if (!card) return;
 

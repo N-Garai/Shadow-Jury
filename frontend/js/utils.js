@@ -1,4 +1,20 @@
+var __SHADOW_JURY__ = {
+    frozen: false,
+    particleRaf: null,
+    nodeRaf: null,
+    scrollTicking: {}
+};
+
 function $(id) { return document.getElementById(id); }
+
+function freezeAnimations() {
+    __SHADOW_JURY__.frozen = true;
+    document.documentElement.classList.add('animations-paused');
+}
+function thawAnimations() {
+    __SHADOW_JURY__.frozen = false;
+    document.documentElement.classList.remove('animations-paused');
+}
 
 function show(id) { $(id).classList.remove('hidden'); }
 
@@ -282,12 +298,15 @@ function initExplainerCards() {
 }
 
 /* ===== Particle Network Background ===== */
+var _particleCanvas = null, _particleCtx = null, _particles = [], _particleMouse = { x: null, y: null, radius: 120 };
+
 function initParticleNetwork() {
     var canvas = document.getElementById('particleNetwork');
     if (!canvas) return;
-    var ctx = canvas.getContext('2d');
-    var particles = [];
-    var mouse = { x: null, y: null, radius: 120 };
+    _particleCanvas = canvas;
+    _particleCtx = canvas.getContext('2d');
+    _particles = [];
+    _particleMouse = { x: null, y: null, radius: 120 };
 
     function resize() {
         canvas.width = window.innerWidth;
@@ -296,89 +315,134 @@ function initParticleNetwork() {
     resize();
     window.addEventListener('resize', resize);
 
-    var count = Math.min(80, Math.floor(window.innerWidth * window.innerHeight / 18000));
+    var count = Math.min(50, Math.floor(window.innerWidth * window.innerHeight / 22000));
 
     for (var i = 0; i < count; i++) {
-        particles.push({
+        _particles.push({
             x: Math.random() * canvas.width,
             y: Math.random() * canvas.height,
-            vx: (Math.random() - 0.5) * 0.4,
-            vy: (Math.random() - 0.5) * 0.4,
-            r: Math.random() * 1.8 + 0.6
+            vx: (Math.random() - 0.5) * 0.3,
+            vy: (Math.random() - 0.5) * 0.3,
+            r: Math.random() * 1.5 + 0.5
         });
     }
 
     window.addEventListener('mousemove', function(e) {
-        mouse.x = e.clientX;
-        mouse.y = e.clientY;
-    });
+        _particleMouse.x = e.clientX;
+        _particleMouse.y = e.clientY;
+    }, { passive: true });
     window.addEventListener('mouseleave', function() {
-        mouse.x = null;
-        mouse.y = null;
-    });
+        _particleMouse.x = null;
+        _particleMouse.y = null;
+    }, { passive: true });
 
-    function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        var isDark = document.documentElement.classList.contains('dark');
-        var color = isDark ? '148, 58, 237' : '124, 58, 237';
-        var connectDist = Math.min(140, canvas.width * 0.12);
+    drawParticles();
+}
 
-        /* Update particles */
-        for (var i = 0; i < particles.length; i++) {
-            var p = particles[i];
-            /* Mouse repulsion */
-            if (mouse.x !== null && mouse.y !== null) {
-                var dx = p.x - mouse.x;
-                var dy = p.y - mouse.y;
-                var dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < mouse.radius) {
-                    var force = (mouse.radius - dist) / mouse.radius;
-                    p.vx += (dx / dist) * force * 0.6;
-                    p.vy += (dy / dist) * force * 0.6;
-                }
+var _particleConnCache = [];
+
+function drawParticles() {
+    if (__SHADOW_JURY__.frozen) {
+        __SHADOW_JURY__.particleRaf = requestAnimationFrame(drawParticles);
+        return;
+    }
+    var ctx = _particleCtx, canvas = _particleCanvas, particles = _particles, mouse = _particleMouse;
+    if (!ctx || !canvas) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    var isDark = document.documentElement.classList.contains('dark');
+    var color = isDark ? '148, 58, 237' : '124, 58, 237';
+    var connectDist = Math.min(120, canvas.width * 0.1);
+
+    for (var i = 0; i < particles.length; i++) {
+        var p = particles[i];
+        if (mouse.x !== null && mouse.y !== null) {
+            var dx = p.x - mouse.x;
+            var dy = p.y - mouse.y;
+            var dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < mouse.radius) {
+                var force = (mouse.radius - dist) / mouse.radius;
+                p.vx += (dx / dist || 0) * force * 0.5;
+                p.vy += (dy / dist || 0) * force * 0.5;
             }
-            p.x += p.vx;
-            p.y += p.vy;
-            /* Damping */
-            p.vx *= 0.98;
-            p.vy *= 0.98;
-            /* Wrap edges */
-            if (p.x < -10) p.x = canvas.width + 10;
-            if (p.x > canvas.width + 10) p.x = -10;
-            if (p.y < -10) p.y = canvas.height + 10;
-            if (p.y > canvas.height + 10) p.y = -10;
         }
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vx *= 0.98;
+        p.vy *= 0.98;
+        if (p.x < -10) p.x = canvas.width + 10;
+        if (p.x > canvas.width + 10) p.x = -10;
+        if (p.y < -10) p.y = canvas.height + 10;
+        if (p.y > canvas.height + 10) p.y = -10;
+    }
 
-        /* Draw connections */
-        for (var i = 0; i < particles.length; i++) {
-            for (var j = i + 1; j < particles.length; j++) {
-                var dx = particles[i].x - particles[j].x;
-                var dy = particles[i].y - particles[j].y;
-                var dist = Math.sqrt(dx * dx + dy * dy);
+    /* Spatial grid for connection optimization */
+    var cellSize = connectDist;
+    var grid = {};
+    for (var i = 0; i < particles.length; i++) {
+        var px = particles[i], cx = Math.floor(px.x / cellSize), cy = Math.floor(px.y / cellSize);
+        var key = cx + ',' + cy;
+        if (!grid[key]) grid[key] = [];
+        grid[key].push(i);
+    }
+
+    var drawn = {};
+    for (var key in grid) {
+        var cell = grid[key];
+        var parts = key.split(',');
+        var gx = parseInt(parts[0]), gy = parseInt(parts[1]);
+        for (var ci = 0; ci < cell.length; ci++) {
+            for (var cj = ci + 1; cj < cell.length; cj++) {
+                var id = cell[ci] < cell[cj] ? cell[ci] + '-' + cell[cj] : cell[cj] + '-' + cell[ci];
+                if (drawn[id]) continue;
+                drawn[id] = true;
+                var a = particles[cell[ci]], b = particles[cell[cj]];
+                var dx = a.x - b.x, dy = a.y - b.y, dist = Math.sqrt(dx * dx + dy * dy);
                 if (dist < connectDist) {
-                    var opacity = (1 - dist / connectDist) * 0.35;
                     ctx.beginPath();
-                    ctx.moveTo(particles[i].x, particles[i].y);
-                    ctx.lineTo(particles[j].x, particles[j].y);
-                    ctx.strokeStyle = 'rgba(' + color + ', ' + opacity + ')';
+                    ctx.moveTo(a.x, a.y);
+                    ctx.lineTo(b.x, b.y);
+                    ctx.strokeStyle = 'rgba(' + color + ', ' + ((1 - dist / connectDist) * 0.35) + ')';
                     ctx.lineWidth = 0.5;
                     ctx.stroke();
                 }
             }
+            /* Check adjacent cells */
+            for (var nx = -1; nx <= 1; nx++) {
+                for (var ny = -1; ny <= 1; ny++) {
+                    if (nx === 0 && ny === 0) continue;
+                    var nk = (gx + nx) + ',' + (gy + ny);
+                    var ncell = grid[nk];
+                    if (!ncell) continue;
+                    for (var ni = 0; ni < ncell.length; ni++) {
+                        var id = cell[ci] < ncell[ni] ? cell[ci] + '-' + ncell[ni] : ncell[ni] + '-' + cell[ci];
+                        if (drawn[id]) continue;
+                        drawn[id] = true;
+                        var a = particles[cell[ci]], b = particles[ncell[ni]];
+                        var dx = a.x - b.x, dy = a.y - b.y, dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < connectDist) {
+                            ctx.beginPath();
+                            ctx.moveTo(a.x, a.y);
+                            ctx.lineTo(b.x, b.y);
+                            ctx.strokeStyle = 'rgba(' + color + ', ' + ((1 - dist / connectDist) * 0.35) + ')';
+                            ctx.lineWidth = 0.5;
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
         }
-
-        /* Draw particles */
-        for (var i = 0; i < particles.length; i++) {
-            var p = particles[i];
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(' + color + ', 0.5)';
-            ctx.fill();
-        }
-
-        requestAnimationFrame(draw);
     }
-    draw();
+
+    for (var i = 0; i < particles.length; i++) {
+        var p = particles[i];
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(' + color + ', 0.5)';
+        ctx.fill();
+    }
+
+    __SHADOW_JURY__.particleRaf = requestAnimationFrame(drawParticles);
 }
 
 /* ===== Agent Node Popup — JS direct hover + click control ===== */
@@ -461,149 +525,122 @@ function initAgentPopups() {
 }
 
 /* ===== Dynamic Node Network — three-body-problem orbital motion ===== */
+var _nodePos = null, _nodeVel = null, _nodePaths = null, _nodeSvg = null, _nodeEls = null;
+var _nodeMouseX = -1, _nodeMouseY = -1, _nodeMouseInside = false;
+
 function initDynamicNetwork() {
-    var svg = document.getElementById('agentLines');
-    if (!svg) return;
+    _nodeSvg = document.getElementById('agentLines');
+    if (!_nodeSvg) return;
 
-    var nodes = document.querySelectorAll('.agent-node');
-    if (nodes.length < 13) return;
+    _nodeEls = document.querySelectorAll('.agent-node');
+    if (_nodeEls.length < 13) return;
 
-    /* New initial layout — three interlocking clusters */
-    var pos = [
-        /* Left cluster */
+    _nodePos = [
         {x:24,y:24},{x:28,y:38},{x:20,y:52},{x:26,y:66},{x:22,y:80},
-        /* Right cluster */
         {x:76,y:24},{x:72,y:38},{x:80,y:52},{x:74,y:66},{x:78,y:80},
-        /* Center spine */
         {x:50,y:34},{x:50,y:54},{x:50,y:78}
     ];
 
-    /* Random initial velocities for chaotic orbital motion */
-    var vel = [];
+    _nodeVel = [];
     for (var i = 0; i < 13; i++) {
-        vel.push({
-            x: (Math.random() - 0.5) * 0.08,
-            y: (Math.random() - 0.5) * 0.08
-        });
+        _nodeVel.push({ x: (Math.random() - 0.5) * 0.08, y: (Math.random() - 0.5) * 0.08 });
     }
 
-    /* Chain-only connections (no A→C shortcuts) */
     var conn = [
-        [0,1],[1,2],[2,3],[3,4],            /* left chain */
-        [5,6],[6,7],[7,8],[8,9],            /* right chain */
-        [10,11],[11,12],                     /* center chain */
-        [1,10],[6,10],                       /* left/right to center top */
-        [3,11],[8,11],                       /* left/right to center mid */
-        [4,12],[9,12]                        /* left/right to center bottom */
+        [0,1],[1,2],[2,3],[3,4],[5,6],[6,7],[7,8],[8,9],
+        [10,11],[11,12],[1,10],[6,10],[3,11],[8,11],[4,12],[9,12]
     ];
 
-    /* Build SVG path elements */
-    var paths = [];
+    _nodePaths = [];
     conn.forEach(function(c) {
         var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('class', 'agent-line');
-        svg.appendChild(path);
-        paths.push({el: path, a: c[0], b: c[1]});
+        _nodeSvg.appendChild(path);
+        _nodePaths.push({el: path, a: c[0], b: c[1]});
     });
 
-    function updateDOM() {
-        for (var i = 0; i < nodes.length; i++) {
-            nodes[i].style.setProperty('--nx', pos[i].x + '%');
-            nodes[i].style.setProperty('--ny', pos[i].y + '%');
-        }
-        for (var j = 0; j < paths.length; j++) {
-            var p = paths[j];
-            var a = pos[p.a], b = pos[p.b];
-            var mx = (a.x + b.x) / 2;
-            var my = (a.y + b.y) / 2 + 2;
-            p.el.setAttribute('d', 'M' + a.x + ',' + a.y + ' Q' + mx + ',' + my + ' ' + b.x + ',' + b.y);
-        }
-    }
-
-    /* N-body gravitational simulation with anti-clustering repulsion */
-    var G = 0.00035;
-    var damping = 0.998;
-    var centerPull = 0.0006;
-    var repulsion = 0.012;
-    var minDist = 8;
-    var mouseX = -1, mouseY = -1;
-    var mouseInside = false;
-
-    /* Track mouse for repulsion effect */
     document.addEventListener('mousemove', function(e) {
-        mouseX = (e.clientX / window.innerWidth) * 100;
-        mouseY = (e.clientY / window.innerHeight) * 100;
-        mouseInside = true;
-    });
+        _nodeMouseX = (e.clientX / window.innerWidth) * 100;
+        _nodeMouseY = (e.clientY / window.innerHeight) * 100;
+        _nodeMouseInside = true;
+    }, { passive: true });
     document.addEventListener('mouseleave', function() {
-        mouseInside = false;
-    });
+        _nodeMouseInside = false;
+    }, { passive: true });
 
-    function tick() {
-        var forces = [];
-        for (var i = 0; i < pos.length; i++) {
-            forces.push({x:0, y:0});
+    updateNodeDOM();
+    tickNodes();
+}
+
+function updateNodeDOM() {
+    for (var i = 0; i < _nodeEls.length; i++) {
+        _nodeEls[i].style.setProperty('--nx', _nodePos[i].x + '%');
+        _nodeEls[i].style.setProperty('--ny', _nodePos[i].y + '%');
+    }
+    for (var j = 0; j < _nodePaths.length; j++) {
+        var p = _nodePaths[j];
+        var a = _nodePos[p.a], b = _nodePos[p.b];
+        var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 + 2;
+        p.el.setAttribute('d', 'M' + a.x + ',' + a.y + ' Q' + mx + ',' + my + ' ' + b.x + ',' + b.y);
+    }
+}
+
+function tickNodes() {
+    if (__SHADOW_JURY__.frozen) {
+        __SHADOW_JURY__.nodeRaf = requestAnimationFrame(tickNodes);
+        return;
+    }
+    var pos = _nodePos, vel = _nodeVel;
+    if (!pos) return;
+
+    var G = 0.00035, damping = 0.998, centerPull = 0.0006, repulsion = 0.012, minDist = 8;
+    var forces = [];
+    for (var i = 0; i < pos.length; i++) forces.push({x:0, y:0});
+
+    for (var i = 0; i < pos.length; i++) {
+        for (var j = i + 1; j < pos.length; j++) {
+            var dx = pos[j].x - pos[i].x, dy = pos[j].y - pos[i].y;
+            var dist = Math.sqrt(dx * dx + dy * dy) + 0.1;
+            var gForce = G / (dist * dist + 0.5);
+            var rForce = dist < minDist ? repulsion * (minDist - dist) / minDist : 0;
+            var total = gForce - rForce;
+            var fx = total * dx / dist, fy = total * dy / dist;
+            forces[i].x += fx; forces[i].y += fy;
+            forces[j].x -= fx; forces[j].y -= fy;
         }
-
-        /* Gravitational + repulsion forces between all body pairs */
-        for (var i = 0; i < pos.length; i++) {
-            for (var j = i + 1; j < pos.length; j++) {
-                var dx = pos[j].x - pos[i].x;
-                var dy = pos[j].y - pos[i].y;
-                var dist = Math.sqrt(dx * dx + dy * dy) + 0.1;
-                /* Gravity (long-range attraction) */
-                var gForce = G / (dist * dist + 0.5);
-                /* Repulsion (short-range — kicks in when nodes get close) */
-                var rForce = dist < minDist ? repulsion * (minDist - dist) / minDist : 0;
-                var total = (gForce - rForce);
-                var fx = total * dx / dist;
-                var fy = total * dy / dist;
-                forces[i].x += fx;
-                forces[i].y += fy;
-                forces[j].x -= fx;
-                forces[j].y -= fy;
-            }
-        }
-
-        /* Apply forces + central attractor + mouse repulsion + damping */
-        for (var i = 0; i < pos.length; i++) {
-            var cx = 50 - pos[i].x;
-            var cy = 48 - pos[i].y;
-            var cDist = Math.sqrt(cx * cx + cy * cy) + 1;
-            forces[i].x += centerPull * cx / cDist;
-            forces[i].y += centerPull * cy / cDist;
-
-            /* Mouse repulsion — pushes nodes away from cursor */
-            if (mouseInside) {
-                var mdx = pos[i].x - mouseX;
-                var mdy = pos[i].y - mouseY;
-                var mDist = Math.sqrt(mdx * mdx + mdy * mdy) + 1;
-                if (mDist < 20) {
-                    var mForce = 0.003 / (mDist * 0.5);
-                    forces[i].x += mForce * mdx / mDist;
-                    forces[i].y += mForce * mdy / mDist;
-                }
-            }
-
-            vel[i].x = (vel[i].x + forces[i].x) * damping;
-            vel[i].y = (vel[i].y + forces[i].y) * damping;
-
-            pos[i].x += vel[i].x;
-            pos[i].y += vel[i].y;
-
-            /* Soft boundary clamp */
-            if (pos[i].x < 6) { pos[i].x = 6; vel[i].x *= -0.5; }
-            if (pos[i].x > 94) { pos[i].x = 94; vel[i].x *= -0.5; }
-            if (pos[i].y < 8) { pos[i].y = 8; vel[i].y *= -0.5; }
-            if (pos[i].y > 90) { pos[i].y = 90; vel[i].y *= -0.5; }
-        }
-
-        updateDOM();
-        requestAnimationFrame(tick);
     }
 
-    updateDOM();
-    tick();
+    for (var i = 0; i < pos.length; i++) {
+        var cx = 50 - pos[i].x, cy = 48 - pos[i].y;
+        var cDist = Math.sqrt(cx * cx + cy * cy) + 1;
+        forces[i].x += centerPull * cx / cDist;
+        forces[i].y += centerPull * cy / cDist;
+
+        if (_nodeMouseInside) {
+            var mdx = pos[i].x - _nodeMouseX, mdy = pos[i].y - _nodeMouseY;
+            var mDist = Math.sqrt(mdx * mdx + mdy * mdy) + 1;
+            if (mDist < 20) {
+                var mForce = 0.003 / (mDist * 0.5);
+                forces[i].x += mForce * mdx / mDist;
+                forces[i].y += mForce * mdy / mDist;
+            }
+        }
+
+        vel[i].x = (vel[i].x + forces[i].x) * damping;
+        vel[i].y = (vel[i].y + forces[i].y) * damping;
+        pos[i].x += vel[i].x;
+        pos[i].y += vel[i].y;
+
+        if (pos[i].x < 6) { pos[i].x = 6; vel[i].x *= -0.5; }
+        if (pos[i].x > 94) { pos[i].x = 94; vel[i].x *= -0.5; }
+        if (pos[i].y < 8) { pos[i].y = 8; vel[i].y *= -0.5; }
+        if (pos[i].y > 90) { pos[i].y = 90; vel[i].y *= -0.5; }
+    }
+
+    /* Only update DOM every 2nd frame — reduces layout thrash */
+    if (Math.random() > 0.5) updateNodeDOM();
+
+    __SHADOW_JURY__.nodeRaf = requestAnimationFrame(tickNodes);
 }
 
 document.addEventListener('DOMContentLoaded', function() {

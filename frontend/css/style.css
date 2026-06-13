@@ -48,6 +48,13 @@
   --aurora-opacity: 1;
 }
 
+/* ===== Performance: freeze all animations when pipeline is active ===== */
+html.animations-paused *,
+html.animations-paused *::before,
+html.animations-paused *::after {
+  animation-play-state: paused !important;
+}
+
 /* ===== Base ===== */
 body {
   background: var(--bg-primary);
@@ -184,6 +191,7 @@ body {
   transition: transform 0.25s, box-shadow 0.25s;
   animation: nodePulse 4s ease-in-out infinite;
 }
+.agent-card { will-change: transform; contain: content; }
 .agent-node.hover-active {
   transform: translate(-50%, -50%) scale(2);
   box-shadow: 0 0 20px 8px var(--nc, rgba(124,58,237,0.15));

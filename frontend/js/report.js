@@ -19,13 +19,26 @@ function displayReport(report) {
     }
     setTimeout(function() { animateValue(scoreCircle, 0, total, 1200); }, 100);
 
-    renderCriteria(report.scorecard.criteria || []);
-    renderWeaknesses(report.scorecard.weaknesses || []);
-    renderRisks(report.risk_reports || []);
-    renderSuggestions(report.suggestions || []);
-    renderRadarChart(report);
+    /* Stagger rendering across animation frames to avoid jank */
+    var criteria = report.scorecard.criteria || [];
+    var weaknesses = report.scorecard.weaknesses || [];
+    var risks = report.risk_reports || [];
+    var suggestions = report.suggestions || [];
 
-    showDelta(report);
+    requestAnimationFrame(function() {
+        renderCriteria(criteria);
+        requestAnimationFrame(function() {
+            renderWeaknesses(weaknesses);
+            requestAnimationFrame(function() {
+                renderRisks(risks);
+                requestAnimationFrame(function() {
+                    renderSuggestions(suggestions);
+                    renderRadarChart(report);
+                    showDelta(report);
+                });
+            });
+        });
+    });
 }
 
 function renderRadarChart(report) {
