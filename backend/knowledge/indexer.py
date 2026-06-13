@@ -1,3 +1,4 @@
+import logging
 import os
 import hashlib
 from typing import Optional
@@ -11,6 +12,8 @@ from azure.search.documents.indexes.models import (
     SearchFieldDataType,
 )
 from azure.search.documents import SearchClient
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentIndexer:
@@ -61,8 +64,8 @@ class DocumentIndexer:
         )
         try:
             self._index_client.create_index(index)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to create search index '%s': %s", self.index_name, str(e))
 
     def index_document(self, content: str, source: str,
                        category: str = "user_upload", project: str = ""):
@@ -79,5 +82,5 @@ class DocumentIndexer:
         }
         try:
             self._search_client.upload_documents([document])
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to upload document to index '%s': %s", self.index_name, str(e))

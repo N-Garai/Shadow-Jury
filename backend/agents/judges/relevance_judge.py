@@ -14,26 +14,42 @@ class RelevanceJudge:
     async def _llm_evaluate(self, brief: dict, evidence: dict) -> CriterionScore:
         system = (
             "You are a strict hackathon judge scoring 'Accuracy & Relevance' (weight 20%). "
-            "Return ONLY a JSON object with keys: score (0-100), justification (str), confidence (0-1). "
+            "Return ONLY a JSON object with these exact keys: "
+            '{"score": int (0-100), "justification": str, "confidence": float (0-1)}. '
+            "Score bands — 0-30: no alignment with track, claims contradict description; "
+            "31-60: weak alignment, some claims are off-target; "
+            "61-80: good track fit with mostly aligned claims and appropriate tech; "
+            "81-100: perfect track alignment, all claims validated by description, tech stack is ideal. "
             "Score based on: how well the project fits its stated track, whether claims are aligned with "
             "the project description, and relevance of tech choices to the problem."
         )
-        user = json.dumps({
-            "title": brief.get("title"), "description": brief.get("description"),
-            "track_hint": brief.get("track_hint"), "claims": brief.get("claims"),
-            "tech_stack": brief.get("tech_stack"),
-        })
-        result = await llm_chat(system, user, temperature=0.3)
-        return self._parse_response(result, brief)
+        track = brief.get("track_hint", "Unknown")
+        system += f" The project's stated track is: {track}."
 
-    def _parse_response(self, llm_text: str, brief: dict) -> CriterionScore:
+        user_payload = {
+            "title": brief.get("title"), "description": brief.get("description"),
+            "track_hint": track, "claims": brief.get("claims"),
+            "tech_stack": brief.get("tech_stack"),
+        }
+        citations = evidence.get("foundry_iq", {}).get("citations", [])
+        if citations:
+            user_payload["retrieved_evidence"] = [
+                {"content": c.get("content", "")[:300], "source": c.get("source", ""),
+                 "relevance": c.get("relevance_score", 0)}
+                for c in citations[:3]
+            ]
+        user = json.dumps(user_payload)
+        result = await llm_chat(system, user, temperature=0.3)
+        return self._parse_response(result, brief, evidence)
+
+    def _parse_response(self, llm_text: str, brief: dict, evidence: dict) -> CriterionScore:
         try:
             data = json.loads(llm_text)
             score = max(0, min(100, int(data.get("score", 50))))
             confidence = max(0, min(1, float(data.get("confidence", 0.5))))
             justification = str(data.get("justification", ""))
         except Exception:
-            return self._rule_evaluate(brief, evidence={})
+            return self._rule_evaluate(brief, evidence)
         citations = [EvidenceCitation(content=justification[:200], source="llm_relevance_judge", relevance_score=confidence)]
         return CriterionScore(criterion="Accuracy & Relevance", weight=self.WEIGHT, score=score,
                               justification=justification, citations=citations, confidence=confidence)

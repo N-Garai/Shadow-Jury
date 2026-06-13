@@ -82,7 +82,7 @@ class DocParserAgent:
                 claim = m.group(0).strip()
                 if claim not in claims:
                     claims.append(claim)
-        return claims[:15] or ["No explicit claims detected"]
+        return claims[:15]
 
     def _extract_features(self, lines: list[str]) -> list[str]:
         features = []
@@ -118,13 +118,16 @@ class DocParserAgent:
         tech_keywords = ["python", "javascript", "typescript", "react", "fastapi", "flask",
                          "django", "node", "docker", "azure", "aws", "gcp", "openai",
                          "langchain", "foundry", "tensorflow", "pytorch", "streamlit",
-                         "tailwind", "nextjs", "vercel", "postgres", "redis", "mongodb"]
+                         "tailwind", "nextjs", "vercel", "postgres", "redis", "mongodb",
+                         "rust", "go", "graphql", "grpc", "kubernetes", "terraform",
+                         "htmx", "svelte", "vue", "solidjs", "lit", "express", "spring",
+                         "dotnet", "rails", "phoenix", "elixir", "haskell", "scala"]
         text = "\n".join(lines).lower()
         found = []
         for tech in tech_keywords:
-            if tech in text:
+            if re.search(r'\b' + re.escape(tech) + r'\b', text):
                 found.append(tech.capitalize())
-        return found or ["Unknown"]
+        return found
 
     def _detect_track_hint(self, text: str) -> str:
         text_lower = text.lower()
@@ -138,13 +141,17 @@ class DocParserAgent:
 
     def _chunk_text(self, text: str) -> list[str]:
         chunks = []
-        lines = text.split("\n")
+        paragraphs = text.split("\n\n")
         current_chunk = []
-        for line in lines:
-            current_chunk.append(line)
-            if len(current_chunk) >= 50:
-                chunks.append("\n".join(current_chunk))
+        current_size = 0
+        for para in paragraphs:
+            para_size = len(para.split("\n"))
+            if current_size + para_size > 50 and current_chunk:
+                chunks.append("\n\n".join(current_chunk))
                 current_chunk = []
+                current_size = 0
+            current_chunk.append(para)
+            current_size += para_size
         if current_chunk:
-            chunks.append("\n".join(current_chunk))
+            chunks.append("\n\n".join(current_chunk))
         return chunks

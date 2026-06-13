@@ -1,9 +1,13 @@
+import asyncio
+import logging
 import os
 from typing import Optional
 
 import httpx
 
 _GLOBAL_LLM: Optional["LLMClient"] = None
+
+logger = logging.getLogger(__name__)
 
 
 def get_llm():
@@ -29,6 +33,7 @@ class LLMClient:
 
     BASE_URL = "https://models.inference.ai.azure.com"
     MODEL = "gpt-4o-mini"
+    MAX_RETRIES = 3
 
     def __init__(self):
         token = os.getenv("GITHUB_TOKEN", "").strip()
@@ -58,16 +63,26 @@ class LLMClient:
                 {"role": "user", "content": user},
             ],
             "temperature": temperature,
-            "max_tokens": 1024,
+            "max_tokens": 2048,
         }
 
-        try:
-            resp = await self._client.post("/chat/completions", json=payload)
-            resp.raise_for_status()
-            data = resp.json()
-            return data["choices"][0]["message"]["content"]
-        except Exception:
-            return ""
+        last_error = None
+        for attempt in range(self.MAX_RETRIES):
+            try:
+                resp = await self._client.post("/chat/completions", json=payload)
+                resp.raise_for_status()
+                data = resp.json()
+                content = data["choices"][0]["message"]["content"]
+                if content and content.strip():
+                    return content
+                logger.warning("LLM returned empty response on attempt %d/%d", attempt + 1, self.MAX_RETRIES)
+            except Exception as e:
+                last_error = e
+                logger.warning("LLM call failed on attempt %d/%d: %s", attempt + 1, self.MAX_RETRIES, str(e))
+                if attempt < self.MAX_RETRIES - 1:
+                    await asyncio.sleep(2 ** attempt)
+        logger.error("LLM call exhausted all %d retries: %s", self.MAX_RETRIES, last_error)
+        return ""
 
     async def close(self):
         if self._client:

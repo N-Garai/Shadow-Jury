@@ -14,25 +14,40 @@ class UXJudge:
     async def _llm_evaluate(self, brief: dict, evidence: dict) -> CriterionScore:
         system = (
             "You are a strict hackathon judge scoring 'User Experience & Presentation' (weight 15%). "
-            "Return ONLY JSON: score (0-100), justification (str), confidence (0-1). "
-            "Score based on: UI/UX quality indicators, demo readiness, documentation quality, "
-            "visual polish, presentation strategy, and how easy it is for judges to understand the value."
+            "Return ONLY JSON with these exact keys: "
+            '{"score": int (0-100), "justification": str, "confidence": float (0-1)}. '
+            "Score bands — 0-30: no UI/UX consideration, unclear value proposition; "
+            "31-60: basic interface with minimal polish; "
+            "61-80: well-designed UI with clear demo strategy and documentation; "
+            "81-100: polished, production-ready presentation with excellent demo flow. "
+            "Score based on: articulation of UX strategy, UI component planning, "
+            "demo readiness, documentation quality, presentation strategy, and how easy "
+            "it is for judges to understand the value."
         )
-        user = json.dumps({
+        user_payload = {
             "title": brief.get("title"), "description": brief.get("description"),
             "claims": brief.get("claims"), "features": brief.get("features"),
-        })
+            "tech_stack": brief.get("tech_stack"),
+        }
+        citations = evidence.get("foundry_iq", {}).get("citations", [])
+        if citations:
+            user_payload["retrieved_evidence"] = [
+                {"content": c.get("content", "")[:300], "source": c.get("source", ""),
+                 "relevance": c.get("relevance_score", 0)}
+                for c in citations[:3]
+            ]
+        user = json.dumps(user_payload)
         result = await llm_chat(system, user, temperature=0.3)
-        return self._parse_response(result, brief)
+        return self._parse_response(result, brief, evidence)
 
-    def _parse_response(self, llm_text: str, brief: dict) -> CriterionScore:
+    def _parse_response(self, llm_text: str, brief: dict, evidence: dict) -> CriterionScore:
         try:
             data = json.loads(llm_text)
             score = max(0, min(100, int(data.get("score", 50))))
             confidence = max(0, min(1, float(data.get("confidence", 0.5))))
             justification = str(data.get("justification", ""))
         except Exception:
-            return self._rule_evaluate(brief, evidence={})
+            return self._rule_evaluate(brief, evidence)
         citations = [EvidenceCitation(content=justification[:200], source="llm_ux_judge", relevance_score=confidence)]
         return CriterionScore(criterion="User Experience & Presentation", weight=self.WEIGHT, score=score,
                               justification=justification, citations=citations, confidence=confidence)

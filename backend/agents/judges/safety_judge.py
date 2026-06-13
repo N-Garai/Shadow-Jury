@@ -14,25 +14,39 @@ class SafetyJudge:
     async def _llm_evaluate(self, brief: dict, evidence: dict) -> CriterionScore:
         system = (
             "You are a strict hackathon judge scoring 'Reliability & Safety' (weight 20%). "
-            "Return ONLY JSON: score (0-100), justification (str), confidence (0-1). "
+            "Return ONLY JSON with these exact keys: "
+            '{"score": int (0-100), "justification": str, "confidence": float (0-1)}. '
+            "Score bands — 0-30: no safety or security consideration; "
+            "31-60: basic authentication or minimal safety mentions; "
+            "61-80: content filtering, bias analysis, and testing approach; "
+            "81-100: red-teaming, adversarial testing, continuous monitoring, and ethical framework. "
             "Score based on: safety/security considerations, ethical awareness, hallucination "
             "prevention, citation strategy, testing approach, and responsible AI practices."
         )
-        user = json.dumps({
+        user_payload = {
             "title": brief.get("title"), "description": brief.get("description"),
-            "claims": brief.get("claims"), "tech_stack": brief.get("tech_stack"),
-        })
+            "claims": brief.get("claims"), "features": brief.get("features"),
+            "tech_stack": brief.get("tech_stack"),
+        }
+        citations = evidence.get("foundry_iq", {}).get("citations", [])
+        if citations:
+            user_payload["retrieved_evidence"] = [
+                {"content": c.get("content", "")[:300], "source": c.get("source", ""),
+                 "relevance": c.get("relevance_score", 0)}
+                for c in citations[:3]
+            ]
+        user = json.dumps(user_payload)
         result = await llm_chat(system, user, temperature=0.3)
-        return self._parse_response(result, brief)
+        return self._parse_response(result, brief, evidence)
 
-    def _parse_response(self, llm_text: str, brief: dict) -> CriterionScore:
+    def _parse_response(self, llm_text: str, brief: dict, evidence: dict) -> CriterionScore:
         try:
             data = json.loads(llm_text)
             score = max(0, min(100, int(data.get("score", 50))))
             confidence = max(0, min(1, float(data.get("confidence", 0.5))))
             justification = str(data.get("justification", ""))
         except Exception:
-            return self._rule_evaluate(brief, evidence={})
+            return self._rule_evaluate(brief, evidence)
         citations = [EvidenceCitation(content=justification[:200], source="llm_safety_judge", relevance_score=confidence)]
         return CriterionScore(criterion="Reliability & Safety", weight=self.WEIGHT, score=score,
                               justification=justification, citations=citations, confidence=confidence)
@@ -71,7 +85,8 @@ class SafetyJudge:
         for _ in positives:
             score += 5
         score = max(10, min(100, score))
-        if "CRITICAL" in str(issues):
+        has_critical = any("CRITICAL" in str(i) for i in issues)
+        if has_critical:
             score = min(score, 30)
         citations = [EvidenceCitation(content=f"Safety keywords: {found_safety}. Unsupported claims: {unsupported_claims}",
                                        source="safety_analysis", relevance_score=0.9)]

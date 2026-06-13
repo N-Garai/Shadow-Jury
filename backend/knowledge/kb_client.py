@@ -30,34 +30,34 @@ class FoundryIQClient:
     def is_available(self) -> bool:
         return self._client is not None
 
-    def retrieve(self, query: str, top: int = 3) -> dict:
+    def retrieve(self, query: str, top: int = 5) -> dict:
         if not self.is_available():
             return self._mock_retrieve(query)
 
-        results = self._client.search(query, top=top, include_total_count=True)
-        citations = []
-        for doc in results:
-            citations.append({
-                "content": doc.get("content", "")[:500],
-                "source": doc.get("source", "unknown"),
-                "relevance_score": doc.get("@search.score", 0),
-            })
+        try:
+            results = self._client.search(query, top=top, include_total_count=True)
+            citations = []
+            for doc in results:
+                score = doc.get("@search.score", 0)
+                if score is None or score != score:
+                    score = 0
+                citations.append({
+                    "content": doc.get("content", "")[:500],
+                    "source": doc.get("source", "unknown"),
+                    "relevance_score": score,
+                })
 
-        return {
-            "answer": f"Found {len(citations)} relevant documents for: {query}",
-            "citations": citations,
-            "foundry_iq": True,
-        }
+            return {
+                "answer": f"Found {len(citations)} relevant documents for: {query}",
+                "citations": citations,
+                "foundry_iq": True,
+            }
+        except Exception as e:
+            return self._mock_retrieve(query)
 
     def _mock_retrieve(self, query: str) -> dict:
         return {
-            "answer": f"Based on the project materials: {query}",
-            "citations": [
-                {
-                    "content": f"Relevant passage about: {query[:80]}...",
-                    "source": "project_readme.md",
-                    "relevance_score": 0.85,
-                }
-            ],
+            "answer": "Mock evidence — Foundry IQ not configured",
+            "citations": [],
             "foundry_iq": False,
         }

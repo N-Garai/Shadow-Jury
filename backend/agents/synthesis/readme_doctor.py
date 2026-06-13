@@ -36,7 +36,8 @@ class ReadmeDoctorAgent:
                 recommendation="Add a line: '## Track' with the track name and why your project fits",
             ))
 
-        if not any("demo" in s.lower() for s in suggestions):
+        readme = brief.get("readme", "").lower()
+        if not any(w in readme for w in ["demo", "screenshot", "gif", "video", "walkthrough", "showcase"]):
             suggestions.append("Create a GIF/screen recording walkthrough for the README to impress judges")
 
         if opportunities:

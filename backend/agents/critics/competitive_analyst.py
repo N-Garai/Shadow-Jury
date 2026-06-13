@@ -24,7 +24,7 @@ class CompetitiveAnalystAgent:
         result = await llm_chat(system, user, temperature=0.4)
         try:
             data = json.loads(result)
-            risks = [Weakness(**r) for r in data.get("risks", [])]
+            risks = [Weakness.model_validate(r) for r in data.get("risks", [])]
             return float(data.get("competition_score", 50)), data.get("opportunities", []), risks
         except Exception:
             return self._rule_analyze(brief)

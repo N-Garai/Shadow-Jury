@@ -25,16 +25,16 @@ class DevilsAdvocateAgent:
             "scores": score_summary,
         })
         result = await llm_chat(system, user, temperature=0.4)
-        return self._parse_response(result, scores)
+        return self._parse_response(result, scores, brief)
 
-    def _parse_response(self, llm_text: str, scores: list) -> tuple[list[Weakness], dict]:
+    def _parse_response(self, llm_text: str, scores: list, brief: dict = None) -> tuple[list[Weakness], dict]:
         try:
             data = json.loads(llm_text)
-            weaknesses = [Weakness(**w) for w in data.get("weaknesses", [])]
+            weaknesses = [Weakness.model_validate(w) for w in data.get("weaknesses", [])]
             penalties = data.get("penalties", {})
             return weaknesses, penalties
         except Exception:
-            return self._rule_critique({}, scores)
+            return self._rule_critique(brief or {}, scores)
 
     def _rule_critique(self, brief: dict, scores: list) -> tuple[list[Weakness], dict]:
         weaknesses = []
@@ -79,9 +79,9 @@ class DevilsAdvocateAgent:
                 suggestion=f"Add sections for: {', '.join(missing_sections)}"))
 
         for score in scores:
-            if score.score < 50:
-                penalties[score.criterion] = 0.15
-            elif score.score < 30:
+            if score.score < 30:
                 penalties[score.criterion] = 0.25
+            elif score.score < 50:
+                penalties[score.criterion] = 0.15
 
         return weaknesses, penalties

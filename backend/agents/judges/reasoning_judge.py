@@ -14,26 +14,39 @@ class ReasoningJudge:
     async def _llm_evaluate(self, brief: dict, evidence: dict) -> CriterionScore:
         system = (
             "You are a strict hackathon judge scoring 'Reasoning & Multi-step Thinking' (weight 20%). "
-            "Return ONLY a JSON object with: score (0-100), justification (str), confidence (0-1). "
+            "Return ONLY a JSON object with these exact keys: "
+            '{"score": int (0-100), "justification": str, "confidence": float (0-1)}. '
+            "Score bands — 0-30: no orchestration or multi-step logic; "
+            "31-60: basic sequential steps with limited decomposition; "
+            "61-80: parallel/stateful workflows with clear architecture; "
+            "81-100: sophisticated agent graphs with memory and intelligent routing. "
             "Score based on: evidence of multi-step reasoning, agent orchestration patterns, "
             "architecture clarity, workflow complexity, and structured problem decomposition."
         )
-        user = json.dumps({
+        user_payload = {
             "title": brief.get("title"), "description": brief.get("description"),
             "claims": brief.get("claims"), "features": brief.get("features"),
             "tech_stack": brief.get("tech_stack"), "goals": brief.get("goals"),
-        })
+        }
+        citations = evidence.get("foundry_iq", {}).get("citations", [])
+        if citations:
+            user_payload["retrieved_evidence"] = [
+                {"content": c.get("content", "")[:300], "source": c.get("source", ""),
+                 "relevance": c.get("relevance_score", 0)}
+                for c in citations[:3]
+            ]
+        user = json.dumps(user_payload)
         result = await llm_chat(system, user, temperature=0.3)
-        return self._parse_response(result, brief)
+        return self._parse_response(result, brief, evidence)
 
-    def _parse_response(self, llm_text: str, brief: dict) -> CriterionScore:
+    def _parse_response(self, llm_text: str, brief: dict, evidence: dict) -> CriterionScore:
         try:
             data = json.loads(llm_text)
             score = max(0, min(100, int(data.get("score", 50))))
             confidence = max(0, min(1, float(data.get("confidence", 0.5))))
             justification = str(data.get("justification", ""))
         except Exception:
-            return self._rule_evaluate(brief, evidence={})
+            return self._rule_evaluate(brief, evidence)
         citations = [EvidenceCitation(content=justification[:200], source="llm_reasoning_judge", relevance_score=confidence)]
         return CriterionScore(criterion="Reasoning & Multi-step Thinking", weight=self.WEIGHT, score=score,
                               justification=justification, citations=citations, confidence=confidence)

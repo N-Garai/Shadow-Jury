@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from typing import Optional
 from dataclasses import dataclass, field
 
@@ -24,6 +25,8 @@ from backend.knowledge.indexer import DocumentIndexer
 from backend.knowledge.kb_client import FoundryIQClient
 from backend.llm import get_llm
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class PipelineContext:
@@ -40,6 +43,7 @@ class PipelineContext:
     verified_evidence: list[EvidenceCitation] = field(default_factory=list)
     flagged_evidence: list[EvidenceCitation] = field(default_factory=list)
     evidence_confidence: float = 0.0
+    evidence_dict: dict = field(default_factory=dict)
     scorecard: Optional[Scorecard] = None
     report: Optional[FinalReport] = None
 
@@ -128,8 +132,8 @@ class ProjectJuryPipeline:
                             project=brief.title,
                         )
                         indexed_count += 1
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("Foundry IQ indexing failed: %s", str(e))
             yield self._evt("agent_result", layer=1, agent="Foundry IQ Indexer",
                             desc=f"Indexed {indexed_count} document chunks" if indexed_count
                                  else "Foundry IQ not available (no SEARCH_ENDPOINT configured)",
@@ -148,15 +152,21 @@ class ProjectJuryPipeline:
                 yield self._evt("agent_start", layer=2, agent="Foundry IQ Retriever",
                                 desc="Retrieving relevant evidence from knowledge base...")
                 try:
-                    result = kb.retrieve(
-                        f"Project: {ctx.brief.title}. Description: {ctx.brief.description[:200]}"
+                    query = (
+                        f"Project: {ctx.brief.title}. "
+                        f"Description: {ctx.brief.description[:300]}. "
+                        f"Keywords: {', '.join(ctx.brief.tech_stack)}. "
+                        f"Track: {ctx.brief.track_hint or 'Unknown'}."
                     )
+                    result = kb.retrieve(query)
                     evidence_dict["foundry_iq"] = result
+                    ctx.evidence_dict = evidence_dict
                     citations = result.get("citations", [])
                     yield self._evt("agent_result", layer=2, agent="Foundry IQ Retriever",
                                     desc=f"Retrieved {len(citations)} relevant document passages",
                                     data={"citations": citations})
-                except Exception:
+                except Exception as e:
+                    logger.warning("Foundry IQ retrieval failed: %s", str(e))
                     yield self._evt("agent_result", layer=2, agent="Foundry IQ Retriever",
                                     desc="Retrieval failed — proceeding with mock evidence")
 
@@ -172,7 +182,6 @@ class ProjectJuryPipeline:
             for name, judge, purpose in judges:
                 yield self._evt("agent_start", layer=2, agent=name,
                                 desc=purpose)
-                await asyncio.sleep(0.1)
                 score = await judge.evaluate(brief_dict, evidence_dict)
                 results.append(score)
                 yield self._evt("agent_result", layer=2, agent=name,
@@ -207,7 +216,7 @@ class ProjectJuryPipeline:
             yield self._evt("agent_start", layer=3, agent="Evidence Verifier",
                             desc="Cross-checking scoring evidence and flagging unsupported claims...")
             verifier = EvidenceVerifierAgent()
-            verified, flagged, confidence = await verifier.verify(ctx.scores)
+            verified, flagged, confidence = await verifier.verify(ctx.scores, brief_dict, evidence_dict)
             ctx.verified_evidence = verified
             ctx.flagged_evidence = flagged
             ctx.evidence_confidence = confidence
@@ -311,7 +320,7 @@ class ProjectJuryPipeline:
         }
 
     async def _layer1_intake(self, ctx: PipelineContext) -> PipelineContext:
-        self._update_progress(0.0, 0.25, "Parsing project documents...")
+        self._update_progress(0.0, "Parsing project documents...")
 
         doc_parser = DocParserAgent()
         brief = await doc_parser.parse(ctx.files_content, ctx.paste_text, ctx.github_data)
@@ -330,13 +339,13 @@ class ProjectJuryPipeline:
                         category="user_upload",
                         project=brief.title,
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Foundry IQ indexing in _layer1_intake failed: %s", str(e))
 
         return ctx
 
     async def _layer2_judges(self, ctx: PipelineContext) -> PipelineContext:
-        self._update_progress(0.25, 0.55, "Running specialist judges...")
+        self._update_progress(0.25, "Running specialist judges...")
 
         brief_dict = self._brief_to_dict(ctx.brief)
 
@@ -344,12 +353,17 @@ class ProjectJuryPipeline:
         kb = FoundryIQClient()
         if kb.is_available():
             try:
-                result = kb.retrieve(
-                    f"Project: {ctx.brief.title}. Description: {ctx.brief.description[:200]}"
+                query = (
+                    f"Project: {ctx.brief.title}. "
+                    f"Description: {ctx.brief.description[:300]}. "
+                    f"Keywords: {', '.join(ctx.brief.tech_stack)}. "
+                    f"Track: {ctx.brief.track_hint or 'Unknown'}."
                 )
+                result = kb.retrieve(query)
                 evidence_dict["foundry_iq"] = result
-            except Exception:
-                pass
+                ctx.evidence_dict = evidence_dict
+            except Exception as e:
+                logger.warning("Foundry IQ retrieval in _layer2_judges failed: %s", str(e))
 
         judges = [
             RelevanceJudge(),
@@ -367,7 +381,7 @@ class ProjectJuryPipeline:
         return ctx
 
     async def _layer3_critics(self, ctx: PipelineContext) -> PipelineContext:
-        self._update_progress(0.55, 0.8, "Running critics and validators...")
+        self._update_progress(0.55, "Running critics and validators...")
 
         brief_dict = self._brief_to_dict(ctx.brief)
 
@@ -377,7 +391,7 @@ class ProjectJuryPipeline:
         ctx.penalties = penalties
 
         verifier = EvidenceVerifierAgent()
-        verified, flagged, confidence = await verifier.verify(ctx.scores)
+        verified, flagged, confidence = await verifier.verify(ctx.scores, brief_dict, ctx.evidence_dict)
         ctx.verified_evidence = verified
         ctx.flagged_evidence = flagged
         ctx.evidence_confidence = confidence
@@ -391,7 +405,7 @@ class ProjectJuryPipeline:
         return ctx
 
     async def _layer4_synthesis(self, ctx: PipelineContext) -> PipelineContext:
-        self._update_progress(0.8, 1.0, "Synthesizing final report...")
+        self._update_progress(0.8, "Synthesizing final report...")
 
         aggregator = ScoringAggregatorAgent()
         scorecard = await aggregator.aggregate(ctx.scores, ctx.weaknesses,
@@ -440,8 +454,10 @@ class ProjectJuryPipeline:
 
     def _extract_readme(self, files: list[dict]) -> str:
         for f in files:
-            if "readme" in f["name"].lower():
-                return f["content"][:2000]
+            name = f.get("name", "").lower()
+            path = f.get("path", "").lower()
+            if "readme" in name or "readme" in path:
+                return f.get("content", "")[:2000]
         return ""
 
     def _build_execution_summary(self, ctx: PipelineContext) -> str:
@@ -453,15 +469,20 @@ class ProjectJuryPipeline:
         ]
         kb = FoundryIQClient()
         if kb.is_available():
-            parts.append("Microsoft IQ: Foundry IQ (Azure AI Search)")
+            parts.append("Microsoft IQ: Foundry IQ (Azure AI Search) — active")
         else:
             parts.append("Microsoft IQ: not configured (add SEARCH_ENDPOINT + SEARCH_API_KEY)")
         llm = get_llm()
-        parts.append("LLM: GPT-4o-mini (GitHub Models)" if llm.is_available() else "LLM: not configured (set GITHUB_TOKEN)")
+        if llm.is_available():
+            parts.append("LLM: GPT-4o-mini (GitHub Models) — active")
+        else:
+            parts.append("LLM: not configured (set GITHUB_TOKEN)")
+        if ctx.competition_score:
+            parts.append(f"Competitive edge: {ctx.competition_score:.0f}/100")
         return "; ".join(parts)
 
-    def _update_progress(self, start: float, end: float, message: str):
-        self.status.progress = start
+    def _update_progress(self, progress: float, message: str):
+        self.status.progress = min(progress, 1.0)
         self.status.message = message
 
     def get_status(self) -> PipelineStatus:

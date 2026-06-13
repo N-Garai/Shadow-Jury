@@ -8,12 +8,13 @@ class ScoringAggregatorAgent:
         weighting_sum = sum(s.weight for s in scores)
         raw_weighted = sum(s.score * s.weight for s in scores)
 
-        penalty_total = sum(penalties.get(s.criterion, 0) for s in scores)
+        penalty_total = min(sum(penalties.get(s.criterion, 0) for s in scores), 0.4)
         adjusted_weighted = raw_weighted * (1 - penalty_total)
         average = adjusted_weighted / max(weighting_sum, 1)
 
-        total = round(average, 1)
-        grades = []
+        comp_factor = competition_score / 100.0
+        total = round(average * 0.85 + comp_factor * 100 * 0.15, 1)
+
         if total >= 85:
             grade = "A"
         elif total >= 75:

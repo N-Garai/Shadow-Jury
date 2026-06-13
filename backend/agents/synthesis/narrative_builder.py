@@ -1,4 +1,5 @@
-from backend.schemas.models import FinalReport, Scorecard, ProjectBrief, RiskReport, Weakness
+from backend.schemas.models import Scorecard, ProjectBrief, Weakness
+from backend.knowledge.kb_client import FoundryIQClient
 
 
 class NarrativeBuilderAgent:
@@ -33,10 +34,19 @@ class NarrativeBuilderAgent:
         return narrative
 
     def _build_iq_summary(self, scorecard: Scorecard) -> dict:
+        kb = FoundryIQClient()
+        if kb.is_available():
+            return {
+                "layer": "Foundry IQ",
+                "status": "active",
+                "description": "Azure AI Search for agentic knowledge retrieval — indexes project documents and delivers cited, grounded evidence to reduce hallucination",
+                "integration": "Documents are indexed into Azure AI Search via DocumentIndexer. Judges retrieve relevant passages via FoundryIQClient for cited scoring.",
+            }
         return {
             "layer": "Foundry IQ",
-            "description": "Azure AI Search for agentic knowledge retrieval — indexes project documents and delivers cited, grounded evidence to reduce hallucination",
-            "integration": "Documents are indexed into Azure AI Search via DocumentIndexer. Judges retrieve relevant passages via FoundryIQClient for cited scoring.",
+            "status": "not configured",
+            "description": "Set SEARCH_ENDPOINT and SEARCH_API_KEY environment variables to enable grounded evidence retrieval",
+            "integration": "Currently using mock evidence. Add Azure AI Search credentials for real retrieval.",
         }
 
     def _build_recommendation(self, scorecard: Scorecard, weaknesses: list[Weakness]) -> dict:

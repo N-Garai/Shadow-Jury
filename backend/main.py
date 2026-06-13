@@ -97,6 +97,7 @@ async def run_pipeline(pipeline_id: str):
             data.get("paste_text"),
             data.get("github_data"),
         )
+        pipeline._cached_report = report
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -155,16 +156,9 @@ async def get_report(pipeline_id: str):
     if status.state != "completed":
         raise HTTPException(status_code=400, detail="Pipeline not yet completed")
 
-    data = getattr(pipeline, "upload_data", None) or {}
-    try:
-        report = await pipeline.run(
-            pipeline_id,
-            data.get("files_content", []),
-            data.get("paste_text"),
-            data.get("github_data"),
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    report = getattr(pipeline, "_cached_report", None)
+    if report is None:
+        raise HTTPException(status_code=500, detail="Report not found in cache")
 
     return report.model_dump()
 
@@ -180,16 +174,9 @@ async def download_report(pipeline_id: str):
     if status.state != "completed":
         raise HTTPException(status_code=400, detail="Pipeline not yet completed")
 
-    data = getattr(pipeline, "upload_data", None) or {}
-    try:
-        report = await pipeline.run(
-            pipeline_id,
-            data.get("files_content", []),
-            data.get("paste_text"),
-            data.get("github_data"),
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    report = getattr(pipeline, "_cached_report", None)
+    if report is None:
+        raise HTTPException(status_code=500, detail="Report not found in cache")
 
     report_path = os.path.join(os.path.dirname(__file__), f"_reports/{pipeline_id}.json")
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
