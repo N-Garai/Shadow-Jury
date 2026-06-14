@@ -31,7 +31,7 @@ class ReasoningJudge:
         citations = evidence.get("foundry_iq", {}).get("citations", [])
         if citations:
             user_payload["retrieved_evidence"] = [
-                {"content": c.get("content", "")[:300], "source": c.get("source", ""),
+                {"content": c.get("content", "")[:800], "source": c.get("source", ""),
                  "relevance": c.get("relevance_score", 0)}
                 for c in citations[:3]
             ]

@@ -156,9 +156,11 @@ class ProjectJuryPipeline:
                         f"Project: {ctx.brief.title}. "
                         f"Description: {ctx.brief.description[:300]}. "
                         f"Keywords: {', '.join(ctx.brief.tech_stack)}. "
-                        f"Track: {ctx.brief.track_hint or 'Unknown'}."
+                        f"Track: {ctx.brief.track_hint or 'Unknown'}. "
+                        f"Criteria: fit & relevance, reasoning & orchestration, "
+                        f"creativity & originality, UX & presentation, safety & reliability."
                     )
-                    result = kb.retrieve(query)
+                    result = kb.retrieve(query, top=8)
                     evidence_dict["foundry_iq"] = result
                     ctx.evidence_dict = evidence_dict
                     citations = result.get("citations", [])
@@ -357,9 +359,11 @@ class ProjectJuryPipeline:
                     f"Project: {ctx.brief.title}. "
                     f"Description: {ctx.brief.description[:300]}. "
                     f"Keywords: {', '.join(ctx.brief.tech_stack)}. "
-                    f"Track: {ctx.brief.track_hint or 'Unknown'}."
+                    f"Track: {ctx.brief.track_hint or 'Unknown'}. "
+                    f"Criteria: fit & relevance, reasoning & orchestration, "
+                    f"creativity & originality, UX & presentation, safety & reliability."
                 )
-                result = kb.retrieve(query)
+                result = kb.retrieve(query, top=8)
                 evidence_dict["foundry_iq"] = result
                 ctx.evidence_dict = evidence_dict
             except Exception as e:

@@ -5,7 +5,7 @@ from typing import Optional
 
 class GitHubFetcher:
     GITHUB_API = "https://api.github.com"
-    MAX_FILE_FETCHES = 5  # limit file fetches to stay under rate limit
+    MAX_FILE_FETCHES = 12  # limit file fetches to stay under rate limit
 
     def _headers(self) -> dict:
         headers = {"Accept": "application/vnd.github.raw+json"}
@@ -48,9 +48,11 @@ class GitHubFetcher:
                     break
                 if item["type"] != "blob":
                     continue
-                if not item["path"].endswith((".md", ".py", ".ts", ".js", ".json", ".yaml", ".toml", ".txt")):
+                if not item["path"].endswith((".md", ".py", ".ts", ".js", ".jsx", ".tsx", ".json", ".yaml", ".toml", ".txt", ".css", ".html", ".rs", ".go")):
                     continue
                 if item["path"].lower() == "readme.md" or item["path"].lower() == "readme":
+                    continue
+                if any(seg.startswith(".") or seg == "node_modules" or seg == "venv" or seg == "__pycache__" or seg == "dist" or seg == "build" for seg in item["path"].split("/")):
                     continue
                 file_resp = await client.get(
                     f"{self.GITHUB_API}/repos/{owner}/{repo}/contents/{item['path']}",
@@ -59,7 +61,7 @@ class GitHubFetcher:
                 if file_resp.status_code == 200:
                     relevant_files.append({
                         "path": item["path"],
-                        "content": file_resp.text[:5000],
+                        "content": file_resp.text[:8000],
                     })
                     fetched += 1
 

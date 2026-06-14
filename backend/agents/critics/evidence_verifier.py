@@ -27,7 +27,7 @@ class EvidenceVerifierAgent:
         if evidence:
             citations = evidence.get("foundry_iq", {}).get("citations", [])
             if citations:
-                payload.append({"retrieved_evidence": [{"content": c.get("content", "")[:300], "source": c.get("source", "")} for c in citations[:3]]})
+                payload.append({"retrieved_evidence": [{"content": c.get("content", "")[:800], "source": c.get("source", "")} for c in citations[:3]]})
         user = json.dumps(payload)
         result = await llm_chat(system, user, temperature=0.3)
         try:

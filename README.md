@@ -44,7 +44,7 @@ Every agent runs with either **GPT-4o-mini** (via GitHub Models — free tier, 1
 | **Prompt Engineering** | Every judge has calibrated score bands, explicit JSON schema, and evidence injection |
 | **Live Streaming Deliberation** | SSE-powered real-time agent thinking with per-agent reasoning toggles |
 | **Foundry IQ Integration** | Azure AI Search indexes documents and retrieves grounded evidence for every judge |
-| **GitHub Repo Fetching** | Auto-fetches up to 5 files from any public repo |
+| **GitHub Repo Fetching** | Auto-fetches up to 12 files (code + docs) from any public repo; skips dotfiles, node_modules, venv |
 | **Scoring Rubric** | Weighted ensemble with confidence metrics, penalty caps (40% max), and 15% competition score blend |
 | **Radar Chart** | Visual criteria breakdown via Chart.js v4 |
 | **Export Formats** | JSON, Markdown, PDF (via html2pdf.js + print fallback) |
@@ -177,8 +177,8 @@ Without `GITHUB_TOKEN`, all agents fall back to rule-based evaluation. Without `
 ## Data Flow
 
 1. **Upload** — Files/README/GitHub URL → `POST /api/upload` returns `pipeline_id`
-2. **Intake** — `DocParser` chunks text → `ClaimExtractor` enriches claims → `DocumentIndexer` indexes into Azure AI Search
-3. **Judging** — `FoundryIQClient` retrieves relevant KB passages → All 5 judges receive evidence-injected LLM prompts → Scores with justifications and citations
+2. **Intake** — `DocParser` chunks text (README + up to 12 code/doc files) → `ClaimExtractor` enriches claims → `DocumentIndexer` indexes into Azure AI Search
+3. **Judging** — `FoundryIQClient` retrieves top-8 KB passages with a criteria-aware query (covers all 5 rubric dimensions) → All 5 judges receive evidence-injected LLM prompts (800-char citations instead of 300) → Scores with justifications and citations
 4. **Critique** — `DevilsAdvocate` identifies weaknesses + penalties → `EvidenceVerifier` cross-checks citations including KB evidence → `CompetitiveAnalyst` benchmarks
 5. **Synthesis** — `ScoringAggregator` computes weighted score + competition blend → `NarrativeBuilder` writes summary → `README Doctor` generates suggestions
 6. **Output** — Final report cached on pipeline object; accessible via `/api/report/{id}` and `/api/download/{id}` without re-running
@@ -210,7 +210,7 @@ The frontend is served via a catch-all route from the same FastAPI process.
 
 - [x] 13-agent MoA pipeline with dual LLM/rule-based mode
 - [x] GitHub Models integration (GPT-4o-mini)
-- [x] Foundry IQ via Azure AI Search with per-judge evidence injection
+- [x] Foundry IQ via Azure AI Search with criteria-aware query (top-8, 800-char citations)
 - [x] Live deliberation streaming (SSE, 37 events)
 - [x] Calibrated judge prompts with score bands and JSON schema
 - [x] Exponential backoff retry for LLM calls (3 attempts)
